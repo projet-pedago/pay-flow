@@ -82,6 +82,17 @@ export type Settings = {
   overtimeRate: number;
 };
 
+export type Role = "admin" | "employee";
+
+export type AuthUser = {
+  id: string;
+  email: string;
+  passwordHash: string;
+  role: Role;
+  name: string;
+  employeeId?: string;
+};
+
 export type Store = {
   settings: Settings;
   departments: Department[];
@@ -89,4 +100,5 @@ export type Store = {
   rates: ContributionRate[];
   periods: PayrollPeriod[];
   payslips: Payslip[];
+  users: AuthUser[];
 };

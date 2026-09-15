@@ -4,19 +4,31 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "start": "tsx src/index.ts",
+    "dev": "concurrently -k -n auth,hr,paie,gw -c teal,blue,magenta,yellow \"npm run dev:auth\" \"npm run dev:hr\" \"npm run dev:payroll\" \"npm run dev:gateway\"",
+    "dev:auth": "tsx watch src/services/auth/index.ts",
+    "dev:hr": "tsx watch src/services/hr/index.ts",
+    "dev:payroll": "tsx watch src/services/payroll/index.ts",
+    "dev:gateway": "tsx watch src/gateway/index.ts",
+    "start:auth": "tsx src/services/auth/index.ts",
+    "start:hr": "tsx src/services/hr/index.ts",
+    "start:payroll": "tsx src/services/payroll/index.ts",
+    "start:gateway": "tsx src/gateway/index.ts",
     "build": "tsc --noEmit"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.13.10",
+    "concurrently": "^9.1.2",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2"
   }

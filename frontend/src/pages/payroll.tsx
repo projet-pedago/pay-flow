@@ -82,7 +82,7 @@ export function PayrollPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {data.map((period) => (
-            <Link key={period.id} to={`/paie/${period.id}`}>
+            <Link key={period.id} to={`/admin/paie/${period.id}`}>
               <Card className="h-full transition hover:-translate-y-0.5">
                 <CardContent className="space-y-4">
                   <div className="flex items-start justify-between">

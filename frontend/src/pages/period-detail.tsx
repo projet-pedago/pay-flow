@@ -113,7 +113,7 @@ export function PeriodDetailPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Link to="/paie" className="text-sm text-sage hover:underline">
+          <Link to="/admin/paie" className="text-sm text-sage hover:underline">
             ← Cycles de paie
           </Link>
           <h2 className="font-display mt-2 text-3xl capitalize">{monthLabel(period.year, period.month)}</h2>
@@ -207,7 +207,7 @@ export function PeriodDetailPage() {
                   <td className="px-4 py-3 font-semibold">{moneyExact(estimate.net, currency)}</td>
                   <td className="px-4 py-3">
                     {existing ? (
-                      <Link className="text-sage hover:underline" to={`/bulletins/${existing.id}`}>
+                      <Link className="text-sage hover:underline" to={`/admin/bulletins/${existing.id}`}>
                         Bulletin
                       </Link>
                     ) : (

@@ -1,19 +1,67 @@
 services:
-  backend:
+  auth:
     build:
       context: ./backend
-    container_name: payrollflow-api
+    container_name: payrollflow-auth
     environment:
-      PORT: "45218"
+      PORT: "45231"
+      START: src/services/auth/index.ts
+      JWT_SECRET: payrollflow-dev-secret
+      DATA_DIR: /app/data
     volumes:
       - payroll-data:/app/data
+    expose:
+      - "45231"
+
+  hr:
+    build:
+      context: ./backend
+    container_name: payrollflow-hr
+    environment:
+      PORT: "45232"
+      START: src/services/hr/index.ts
+      JWT_SECRET: payrollflow-dev-secret
+      DATA_DIR: /app/data
+    volumes:
+      - payroll-data:/app/data
+    expose:
+      - "45232"
+
+  payroll:
+    build:
+      context: ./backend
+    container_name: payrollflow-payroll
+    environment:
+      PORT: "45233"
+      START: src/services/payroll/index.ts
+      JWT_SECRET: payrollflow-dev-secret
+      DATA_DIR: /app/data
+    volumes:
+      - payroll-data:/app/data
+    expose:
+      - "45233"
+
+  gateway:
+    build:
+      context: ./backend
+    container_name: payrollflow-gateway
+    environment:
+      PORT: "45218"
+      START: src/gateway/index.ts
+      AUTH_URL: http://auth:45231
+      HR_URL: http://hr:45232
+      PAYROLL_URL: http://payroll:45233
     ports:
       - "45218:45218"
+    depends_on:
+      - auth
+      - hr
+      - payroll
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:45218/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 15s
       timeout: 5s
-      retries: 5
+      retries: 8
 
   frontend:
     build:
@@ -22,8 +70,7 @@ services:
     ports:
       - "45217:80"
     depends_on:
-      backend:
-        condition: service_started
+      - gateway
 
 volumes:
   payroll-data:

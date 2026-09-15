@@ -1,7 +1,9 @@
 import { Router } from "express";
+import { requireAdmin } from "../auth.js";
 import { loadStore } from "../lib/store.js";
 
 export const dashboardRouter = Router();
+dashboardRouter.use(requireAdmin);
 
 dashboardRouter.get("/", (_req, res) => {
   const store = loadStore();

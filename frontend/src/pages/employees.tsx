@@ -140,7 +140,7 @@ export function EmployeesPage() {
           filtered.map((employee) => (
             <Link
               key={employee.id}
-              to={`/employes/${employee.id}`}
+              to={`/admin/employes/${employee.id}`}
               className="grid gap-2 border-b border-ink/6 px-5 py-4 transition last:border-b-0 hover:bg-paper/70 md:grid-cols-[2fr_1.2fr_1fr_1fr_auto] md:items-center"
             >
               <div className="flex items-center gap-3">

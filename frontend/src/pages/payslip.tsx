@@ -1,6 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { ErrorState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth";
 import { moneyExact, monthLabel, percent } from "@/lib/format";
 import type { Department, Employee, PayrollPeriod, Payslip, Settings } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
@@ -14,6 +15,7 @@ type Payload = {
 };
 
 export function PayslipPage() {
+  const { user } = useAuth();
   const { id } = useParams();
   const { data, error, loading, reload } = useApi<Payload>(id ? `/api/payroll/payslips/${id}` : null);
 
@@ -26,7 +28,10 @@ export function PayslipPage() {
   return (
     <div className="mx-auto max-w-4xl bg-white px-6 py-8 print:px-0">
       <div className="mb-6 flex items-center justify-between print:hidden">
-        <Link to={`/paie/${period.id}`} className="text-sm text-sage hover:underline">
+        <Link
+          to={user?.role === "admin" ? `/admin/paie/${period.id}` : "/espace/bulletins"}
+          className="text-sm text-sage hover:underline"
+        >
           ← Retour au cycle
         </Link>
         <Button variant="outline" onClick={() => window.print()}>

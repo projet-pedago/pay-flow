@@ -52,7 +52,7 @@ export function EmployeeDetailPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Link to="/employes" className="text-sm text-sage hover:underline">
+          <Link to="/admin/employes" className="text-sm text-sage hover:underline">
             ← Tous les employés
           </Link>
           <h2 className="font-display mt-2 text-3xl">
@@ -94,7 +94,7 @@ export function EmployeeDetailPage() {
               return (
                 <Link
                   key={payslip.id}
-                  to={`/bulletins/${payslip.id}`}
+                  to={`/admin/bulletins/${payslip.id}`}
                   className="flex items-center justify-between rounded-2xl bg-paper px-4 py-3 hover:bg-[#ebe4d6]"
                 >
                   <div className="space-y-1">

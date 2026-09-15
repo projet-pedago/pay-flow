@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
+import { getUser, requireAuth } from "../auth.js";
 import { calculatePayslip } from "../lib/payroll.js";
 import { id, loadStore, mutate } from "../lib/store.js";
 
@@ -10,6 +11,17 @@ function isActionError(value: object): value is ActionError {
 }
 
 export const payrollRouter = Router();
+
+payrollRouter.use((req, res, next) => {
+  requireAuth(req, res, () => {
+    const ownPayslip = req.method === "GET" && /^\/payslips\/[^/]+$/.test(req.path);
+    if (ownPayslip || getUser(req).role === "admin") {
+      next();
+      return;
+    }
+    res.status(403).json({ error: "Accès administrateur requis" });
+  });
+});
 
 payrollRouter.get("/periods", (_req, res) => {
   const { periods } = loadStore();
@@ -150,6 +162,11 @@ payrollRouter.get("/payslips/:id", (req, res) => {
   const payslip = store.payslips.find((item) => item.id === req.params.id);
   if (!payslip) {
     res.status(404).json({ error: "Bulletin introuvable" });
+    return;
+  }
+  const user = getUser(req);
+  if (user.role !== "admin" && user.employeeId !== payslip.employeeId) {
+    res.status(403).json({ error: "Ce bulletin ne vous appartient pas" });
     return;
   }
   const employee = store.employees.find((item) => item.id === payslip.employeeId);

@@ -9,6 +9,7 @@ COPY tsconfig.json ./
 COPY src ./src
 
 ENV PORT=45218
+ENV START=src/gateway/index.ts
 EXPOSE 45218
 
-CMD ["npx", "tsx", "src/index.ts"]
+CMD ["sh", "-c", "npx tsx $START"]

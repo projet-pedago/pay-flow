@@ -1,0 +1,15 @@
+import { requireAuth } from "../../auth.js";
+import { createService } from "../../http.js";
+import { dashboardRouter } from "../../routes/dashboard.js";
+import { mePayrollRouter } from "../../routes/me-payroll.js";
+import { payrollRouter } from "../../routes/payroll.js";
+import { settingsRouter } from "../../routes/settings.js";
+
+const port = Number(process.env.PORT ?? 45233);
+
+createService("payrollflow-payroll", port, (app) => {
+  app.use("/api/payroll", payrollRouter);
+  app.use("/api/dashboard", dashboardRouter);
+  app.use("/api/settings", settingsRouter);
+  app.use("/api/me", requireAuth, mePayrollRouter);
+});

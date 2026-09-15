@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { z } from "zod";
+import { requireAdmin } from "../auth.js";
 import { loadStore, mutate, resetStore } from "../lib/store.js";
 
 export const settingsRouter = Router();
+settingsRouter.use(requireAdmin);
 
 settingsRouter.get("/", (_req, res) => {
   const store = loadStore();

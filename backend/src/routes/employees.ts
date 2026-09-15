@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
+import { DEMO_EMPLOYEE_PASSWORD } from "../auth-constants.js";
+import { hashPassword, requireAdmin } from "../auth.js";
 import { id, loadStore, mutate } from "../lib/store.js";
 
 const employeeSchema = z.object({
@@ -19,6 +21,7 @@ const employeeSchema = z.object({
 });
 
 export const employeesRouter = Router();
+employeesRouter.use(requireAdmin);
 
 employeesRouter.get("/", (_req, res) => {
   const { employees } = loadStore();
@@ -43,6 +46,14 @@ employeesRouter.post("/", (req, res) => {
   const employee = mutate((store) => {
     const created = { id: id(), ...parsed.data };
     store.employees.push(created);
+    store.users.push({
+      id: id(),
+      email: created.email,
+      passwordHash: hashPassword(DEMO_EMPLOYEE_PASSWORD),
+      role: "employee",
+      name: `${created.firstName} ${created.lastName}`,
+      employeeId: created.id,
+    });
     return created;
   });
   res.status(201).json(employee);
@@ -58,6 +69,11 @@ employeesRouter.put("/:id", (req, res) => {
     const index = store.employees.findIndex((item) => item.id === req.params.id);
     if (index < 0) return null;
     store.employees[index] = { ...store.employees[index], ...parsed.data };
+    const user = store.users.find((item) => item.employeeId === req.params.id);
+    if (user) {
+      user.email = store.employees[index].email;
+      user.name = `${store.employees[index].firstName} ${store.employees[index].lastName}`;
+    }
     return store.employees[index];
   });
   if (!updated) {
@@ -73,6 +89,7 @@ employeesRouter.delete("/:id", (req, res) => {
     if (index < 0) return false;
     store.employees.splice(index, 1);
     store.payslips = store.payslips.filter((item) => item.employeeId !== req.params.id);
+    store.users = store.users.filter((item) => item.employeeId !== req.params.id);
     return true;
   });
   if (!removed) {

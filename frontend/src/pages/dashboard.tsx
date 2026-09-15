@@ -142,7 +142,7 @@ export function DashboardPage() {
           {data.byDepartment.map((department) => (
             <Link
               key={department.id}
-              to="/departements"
+              to="/admin/departements"
               className="rounded-2xl border border-ink/8 bg-paper px-4 py-3 transition hover:-translate-y-0.5"
             >
               <div className="mb-2 flex items-center gap-2">
