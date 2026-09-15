@@ -12,7 +12,7 @@ import {
 import { ErrorState, LoadingState } from "@/components/states";
 import { PeriodBadge } from "@/components/status-badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { monthLabel, money } from "@/lib/format";
+import { monthLabel, money, statusLabel } from "@/lib/format";
 import type { DashboardData } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
 
@@ -40,13 +40,18 @@ export function DashboardPage() {
             {data.settings.companyCity} · les indicateurs se mettent à jour dès qu’un cycle est calculé, validé ou payé.
           </p>
         </div>
-        {data.latestPeriod ? (
+        {data.kpiPeriod ? (
           <div className="rounded-2xl border border-ink/10 bg-white px-4 py-3">
-            <p className="text-xs text-ink/50">Cycle courant</p>
+            <p className="text-xs text-ink/50">Indicateurs basés sur</p>
             <div className="mt-1 flex items-center gap-2">
-              <span className="font-semibold capitalize">{monthLabel(data.latestPeriod.year, data.latestPeriod.month)}</span>
-              <PeriodBadge status={data.latestPeriod.status} />
+              <span className="font-semibold capitalize">{monthLabel(data.kpiPeriod.year, data.kpiPeriod.month)}</span>
+              <PeriodBadge status={data.kpiPeriod.status} />
             </div>
+            {data.latestPeriod && data.latestPeriod.id !== data.kpiPeriod.id ? (
+              <p className="mt-2 text-xs text-ink/45">
+                Cycle ouvert : {monthLabel(data.latestPeriod.year, data.latestPeriod.month)} ({statusLabel(data.latestPeriod.status)})
+              </p>
+            ) : null}
           </div>
         ) : null}
       </div>

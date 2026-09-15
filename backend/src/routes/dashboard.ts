@@ -5,8 +5,11 @@ export const dashboardRouter = Router();
 
 dashboardRouter.get("/", (_req, res) => {
   const store = loadStore();
-  const latest = [...store.periods].sort((a, b) => b.year - a.year || b.month - a.month)[0];
-  const latestSlips = store.payslips.filter((item) => item.periodId === latest?.id);
+  const sorted = [...store.periods].sort((a, b) => b.year - a.year || b.month - a.month);
+  const latest = sorted[0];
+  const kpiPeriod =
+    sorted.find((period) => store.payslips.some((slip) => slip.periodId === period.id)) ?? latest;
+  const latestSlips = store.payslips.filter((item) => item.periodId === kpiPeriod?.id);
   const activeEmployees = store.employees.filter((item) => item.status !== "terminated");
 
   const byDepartment = store.departments.map((department) => {
@@ -51,6 +54,7 @@ dashboardRouter.get("/", (_req, res) => {
         : 0,
     },
     latestPeriod: latest ?? null,
+    kpiPeriod: kpiPeriod ?? null,
     byDepartment,
     history,
     alerts: [

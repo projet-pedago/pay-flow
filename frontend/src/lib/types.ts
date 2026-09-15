@@ -95,6 +95,7 @@ export type DashboardData = {
     averageNet: number;
   };
   latestPeriod: PayrollPeriod | null;
+  kpiPeriod: PayrollPeriod | null;
   byDepartment: {
     id: string;
     name: string;
