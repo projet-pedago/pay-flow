@@ -2,7 +2,9 @@
 
 Gestion de paie en **microservices**. Les bulletins sont générés au format **officiel français** (Cerfa / bulletin de paie), sur le modèle d’un bulletin réel : ANTARES DS, matricule, SIRET, cotisations SANTE / RETRAITE / CSG, net à payer, PAS et cumuls.
 
-Il n’y a **pas d’inscription**. Les comptes sont fournis par le service RH.
+Il n’y a **pas d’inscription**. La connexion passe par **Supabase Auth** (email + mot de passe). Les comptes sont créés par le service RH.
+
+Copiez `frontend/.env.example` → `frontend/.env` et `backend/.env.example` → `backend/.env`, puis renseignez l’URL du projet et les clés `sb_publishable_…` / `sb_secret_…`. La clé secrète reste uniquement côté API.
 
 ## Comptes de démonstration
 

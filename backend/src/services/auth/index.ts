@@ -1,30 +1,52 @@
+import "../../lib/env.js";
 import { z } from "zod";
-import { getUser, publicUser, requireAuth, signToken, verifyPassword } from "../../auth.js";
+import { getUser, publicUser, requireAuth, resolveSupabaseUser, signToken, tokenUserFromEmail, verifyPassword } from "../../auth.js";
 import { createService } from "../../http.js";
+import { getSupabase } from "../../lib/supabase.js";
 import { loadStore } from "../../lib/store.js";
 
 const port = Number(process.env.PORT ?? 45231);
 
 createService("payrollflow-auth", port, (app) => {
-  app.post("/api/auth/login", (req, res) => {
+  app.post("/api/auth/login", async (req, res) => {
     const parsed = z.object({ email: z.string().email(), password: z.string().min(1) }).safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: "Identifiants invalides" });
       return;
     }
-    const user = loadStore().users.find((item) => item.email.toLowerCase() === parsed.data.email.toLowerCase());
-    if (!user || !verifyPassword(parsed.data.password, user.passwordHash)) {
+
+    const supabase = getSupabase();
+    if (supabase) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: parsed.data.email,
+        password: parsed.data.password,
+      });
+      if (error || !data.session?.access_token || !data.user?.email) {
+        res.status(401).json({ error: "Email ou mot de passe incorrect" });
+        return;
+      }
+      const user = (await resolveSupabaseUser(data.session.access_token)) ?? (await tokenUserFromEmail(data.user.email, data.user.id));
+      if (!user) {
+        res.status(403).json({ error: "Compte authentifié mais non rattaché à PayRollFlow" });
+        return;
+      }
+      res.json({ token: data.session.access_token, user: publicUser(user), provider: "supabase" });
+      return;
+    }
+
+    const local = loadStore().users.find((item) => item.email.toLowerCase() === parsed.data.email.toLowerCase());
+    if (!local || !verifyPassword(parsed.data.password, local.passwordHash)) {
       res.status(401).json({ error: "Email ou mot de passe incorrect" });
       return;
     }
     const tokenUser = {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-      employeeId: user.employeeId,
+      id: local.id,
+      email: local.email,
+      role: local.role,
+      name: local.name,
+      employeeId: local.employeeId,
     };
-    res.json({ token: signToken(tokenUser), user: publicUser(tokenUser) });
+    res.json({ token: signToken(tokenUser), user: publicUser(tokenUser), provider: "local" });
   });
 
   app.get("/api/auth/me", requireAuth, (req, res) => {

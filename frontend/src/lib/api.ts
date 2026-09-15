@@ -1,3 +1,5 @@
+import { supabase } from "@/lib/supabase";
+
 const API = import.meta.env.VITE_API_URL ?? "";
 const TOKEN_KEY = "payrollflow.token";
 
@@ -19,7 +21,11 @@ export function setToken(token: string | null) {
 }
 
 export async function api<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = getToken();
+  let token = getToken();
+  if (supabase) {
+    const { data } = await supabase.auth.getSession();
+    token = data.session?.access_token ?? token;
+  }
   const response = await fetch(`${API}${path}`, {
     ...options,
     headers: {
@@ -34,6 +40,7 @@ export async function api<T>(path: string, options?: RequestInit): Promise<T> {
   if (!response.ok) {
     if (response.status === 401 && !path.startsWith("/api/auth/login")) {
       setToken(null);
+      void supabase?.auth.signOut();
     }
     throw new ApiError(payload.error ?? "Erreur réseau", response.status);
   }

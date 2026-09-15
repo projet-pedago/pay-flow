@@ -6,3 +6,8 @@ backend/data/store.json
 .vite
 coverage
 agent-tools
+.env
+.env.local
+backend/.env
+frontend/.env
+frontend/.env.local

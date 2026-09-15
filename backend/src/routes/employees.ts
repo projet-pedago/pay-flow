@@ -3,6 +3,7 @@ import { z } from "zod";
 import { DEMO_EMPLOYEE_PASSWORD } from "../auth-constants.js";
 import { hashPassword, requireAdmin } from "../auth.js";
 import { id, loadStore, mutate } from "../lib/store.js";
+import { provisionEmployeeLogin } from "../lib/provision-login.js";
 
 const employeeSchema = z.object({
   firstName: z.string().min(1),
@@ -130,6 +131,7 @@ employeesRouter.post("/import", (req, res) => {
         employeeId: employee.id,
       });
       added.push(employee);
+      void provisionEmployeeLogin(employee.email, `${employee.firstName} ${employee.lastName}`);
     }
     return added;
   });
@@ -164,6 +166,7 @@ employeesRouter.post("/", (req, res) => {
     });
     return created;
   });
+  void provisionEmployeeLogin(employee.email, `${employee.firstName} ${employee.lastName}`);
   res.status(201).json(employee);
 });
 

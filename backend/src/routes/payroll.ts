@@ -15,8 +15,8 @@ function isActionError(value: object): value is ActionError {
 
 export const payrollRouter = Router();
 
-payrollRouter.use((req, res, next) => {
-  requireAuth(req, res, () => {
+payrollRouter.use(async (req, res, next) => {
+  await requireAuth(req, res, () => {
     const ownPayslip = req.method === "GET" && /^\/payslips\/[^/]+$/.test(req.path);
     if (ownPayslip || getUser(req).role === "admin") {
       next();

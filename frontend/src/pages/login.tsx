@@ -67,7 +67,7 @@ export function LoginPage() {
         <div className="mx-auto w-full max-w-md">
           <p className="text-xs font-semibold tracking-[0.22em] text-sage uppercase lg:hidden">PayRollFlow</p>
           <h2 className="font-display mt-2 text-4xl">Connexion</h2>
-          <p className="mt-2 text-sm text-ink/55">Utilisez le compte fourni par votre administrateur.</p>
+          <p className="mt-2 text-sm text-ink/55">Connexion via Supabase Auth. Utilisez le compte fourni par votre administrateur.</p>
 
           <form
             className="mt-8 space-y-4"

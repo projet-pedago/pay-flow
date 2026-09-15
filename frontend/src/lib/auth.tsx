@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, getToken, setToken as persistToken } from "@/lib/api";
+import { supabase, supabaseEnabled } from "@/lib/supabase";
 
 export type SessionUser = {
   id: string;
@@ -24,8 +25,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    async function boot() {
-      if (!getToken()) {
+
+    async function hydrateFromApi() {
+      if (!getToken() && !supabaseEnabled) {
         if (!cancelled) setLoading(false);
         return;
       }
@@ -39,7 +41,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled) setLoading(false);
       }
     }
-    void boot();
+
+    if (supabase) {
+      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+        persistToken(session?.access_token ?? null);
+      });
+      void supabase.auth.getSession().then(({ data: { session } }) => {
+        persistToken(session?.access_token ?? getToken());
+        void hydrateFromApi();
+      });
+      return () => {
+        cancelled = true;
+        data.subscription.unsubscribe();
+      };
+    }
+
+    void hydrateFromApi();
     return () => {
       cancelled = true;
     };
@@ -50,17 +67,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       async login(email, password) {
-        const result = await api<{ token: string; user: SessionUser }>("/api/auth/login", {
-          method: "POST",
-          body: JSON.stringify({ email, password }),
-        });
-        persistToken(result.token);
-        setUser(result.user);
-        return result.user;
+        if (supabase) {
+          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+          if (error || !data.session?.access_token) {
+            throw new Error(error?.message || "Email ou mot de passe incorrect");
+          }
+          persistToken(data.session.access_token);
+        } else {
+          const result = await api<{ token: string; user: SessionUser }>("/api/auth/login", {
+            method: "POST",
+            body: JSON.stringify({ email, password }),
+          });
+          persistToken(result.token);
+        }
+        const me = await api<SessionUser>("/api/auth/me");
+        setUser(me);
+        return me;
       },
       logout() {
         persistToken(null);
         setUser(null);
+        void supabase?.auth.signOut();
         void api("/api/auth/logout", { method: "POST" }).catch(() => undefined);
       },
     }),

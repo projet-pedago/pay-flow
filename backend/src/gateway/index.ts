@@ -1,3 +1,4 @@
+import "../lib/env.js";
 import cors from "cors";
 import express, { type Request, type RequestHandler, type Response } from "express";
 
