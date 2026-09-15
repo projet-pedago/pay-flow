@@ -44,3 +44,236 @@ select,
 textarea {
   font-family: inherit;
 }
+
+.bulletin-officiel {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 6mm 7mm 8mm;
+  background: #fff;
+  color: #111;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 9.5px;
+  line-height: 1.25;
+  box-sizing: border-box;
+}
+
+.bulletin-officiel table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.bulletin-officiel .meta {
+  border: 1px solid #111;
+}
+
+.bulletin-officiel .meta td {
+  width: 25%;
+  padding: 4px 6px;
+  border-right: 1px solid #111;
+  vertical-align: top;
+}
+
+.bulletin-officiel .meta td:last-child {
+  border-right: 0;
+}
+
+.bulletin-officiel .company-name,
+.bulletin-officiel .person-name {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.bulletin-officiel .parties {
+  border: 1px solid #111;
+  border-top: 0;
+}
+
+.bulletin-officiel .parties td {
+  width: 33.33%;
+  padding: 8px 8px 10px;
+  vertical-align: top;
+  border-right: 1px solid #111;
+}
+
+.bulletin-officiel .parties td:last-child {
+  border-right: 0;
+}
+
+.bulletin-officiel .title-block {
+  text-align: center;
+  padding-top: 18px !important;
+}
+
+.bulletin-officiel .title-block h1 {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.bulletin-officiel .kv {
+  display: grid;
+  grid-template-columns: 78px 1fr;
+  gap: 0 8px;
+  margin-top: 6px;
+}
+
+.bulletin-officiel .lines {
+  border: 1px solid #111;
+  border-top: 0;
+}
+
+.bulletin-officiel .lines th,
+.bulletin-officiel .lines td {
+  border-right: 1px solid #111;
+  padding: 2px 4px;
+  vertical-align: middle;
+}
+
+.bulletin-officiel .lines th {
+  font-weight: 700;
+  font-size: 8px;
+  text-align: center;
+  background: #f3f3f3;
+  border-bottom: 1px solid #111;
+}
+
+.bulletin-officiel .lines td:last-child,
+.bulletin-officiel .lines th:last-child {
+  border-right: 0;
+}
+
+.bulletin-officiel .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.bulletin-officiel .section-row td {
+  font-weight: 700;
+  text-transform: uppercase;
+  padding-top: 5px;
+  border-top: 1px solid #111;
+  background: #fafafa;
+}
+
+.bulletin-officiel .total-row td {
+  font-weight: 700;
+  border-top: 1px solid #111;
+  border-bottom: 1px solid #111;
+}
+
+.bulletin-officiel .bottom {
+  border: 1px solid #111;
+  border-top: 0;
+}
+
+.bulletin-officiel .bottom > td {
+  vertical-align: top;
+  padding: 0;
+}
+
+.bulletin-officiel .leave-box {
+  padding: 6px;
+}
+
+.bulletin-officiel .leave-box table {
+  width: auto;
+  min-width: 210px;
+}
+
+.bulletin-officiel .leave-box th,
+.bulletin-officiel .leave-box td {
+  border: 1px solid #111;
+  padding: 2px 6px;
+  text-align: center;
+}
+
+.bulletin-officiel .net-box {
+  border-left: 1px solid #111;
+  padding: 8px 10px 12px;
+}
+
+.bulletin-officiel .net-pay {
+  font-size: 26px;
+  font-weight: 700;
+  text-align: right;
+  letter-spacing: 0.02em;
+}
+
+.bulletin-officiel .net-label {
+  font-size: 16px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.bulletin-officiel .mention {
+  margin-top: 8px;
+  font-size: 8px;
+}
+
+.bulletin-officiel .legal {
+  font-size: 8px;
+  color: #222;
+  padding: 6px 8px 8px;
+  border: 1px solid #111;
+  border-top: 0;
+}
+
+.bulletin-officiel .pas,
+.bulletin-officiel .cumuls {
+  border: 1px solid #111;
+  border-top: 0;
+}
+
+.bulletin-officiel .pas th,
+.bulletin-officiel .pas td,
+.bulletin-officiel .cumuls th,
+.bulletin-officiel .cumuls td {
+  border: 1px solid #111;
+  padding: 3px 5px;
+}
+
+.bulletin-officiel .siret {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  max-width: 220px;
+}
+
+.col-des { width: 38%; }
+.col-nb { width: 8%; }
+.col-base { width: 11%; }
+.col-taux { width: 10%; }
+.col-gain { width: 11%; }
+.col-ret { width: 11%; }
+.col-pat { width: 11%; }
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 6mm;
+  }
+
+  html,
+  body,
+  #root {
+    background: #fff !important;
+    min-height: 0;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .bulletin-officiel {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+}

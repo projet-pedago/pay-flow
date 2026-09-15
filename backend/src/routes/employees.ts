@@ -18,7 +18,42 @@ const employeeSchema = z.object({
   iban: z.string().min(4),
   city: z.string().min(1),
   country: z.string().min(1),
+  civility: z.enum(["M", "Mme"]).optional(),
+  matricule: z.string().optional(),
+  address: z.string().optional(),
+  postalCode: z.string().optional(),
+  socialSecurityNumber: z.string().optional(),
+  category: z.string().optional(),
+  coefficient: z.string().optional(),
+  classificationIndex: z.string().optional(),
+  qualification: z.string().optional(),
+  contractHours: z.number().positive().optional(),
+  pasRate: z.number().min(0).max(1).optional(),
+  mealTicket5: z.number().min(0).optional(),
+  mealTicket1650: z.number().min(0).optional(),
 });
+
+function withLegalDefaults(
+  data: z.infer<typeof employeeSchema>,
+  store: { employees: { matricule?: string }[]; settings: { monthlyHours: number; companyCity: string } },
+) {
+  return {
+    ...data,
+    civility: data.civility ?? "M",
+    matricule: data.matricule?.trim() || String(1000 + store.employees.length + 1),
+    address: data.address ?? "",
+    postalCode: data.postalCode ?? "",
+    socialSecurityNumber: data.socialSecurityNumber ?? "",
+    category: data.category ?? "Non Cadre",
+    coefficient: data.coefficient ?? "220",
+    classificationIndex: data.classificationIndex ?? "1.3.1",
+    qualification: data.qualification ?? "",
+    contractHours: data.contractHours ?? store.settings.monthlyHours,
+    pasRate: data.pasRate ?? 0,
+    mealTicket5: data.mealTicket5 ?? 0,
+    mealTicket1650: data.mealTicket1650 ?? 0,
+  };
+}
 
 export const employeesRouter = Router();
 employeesRouter.use(requireAdmin);
@@ -70,6 +105,19 @@ employeesRouter.post("/import", (req, res) => {
         iban: row.iban || "FR76 A COMPLETER",
         city: row.city || store.settings.companyCity,
         country: row.country || "France",
+        civility: "M" as const,
+        matricule: String(1000 + store.employees.length + 1),
+        address: "",
+        postalCode: "",
+        socialSecurityNumber: "",
+        category: "Non Cadre",
+        coefficient: "220",
+        classificationIndex: "1.3.1",
+        qualification: "",
+        contractHours: store.settings.monthlyHours,
+        pasRate: 0,
+        mealTicket5: 0,
+        mealTicket1650: 0,
       };
       if (!employee.baseSalary) continue;
       store.employees.push(employee);
@@ -104,7 +152,7 @@ employeesRouter.post("/", (req, res) => {
     return;
   }
   const employee = mutate((store) => {
-    const created = { id: id(), ...parsed.data };
+    const created = { id: id(), ...withLegalDefaults(parsed.data, store) };
     store.employees.push(created);
     store.users.push({
       id: id(),

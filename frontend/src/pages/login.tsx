@@ -14,10 +14,10 @@ const demos = [
     hint: "Pilotage RH, cycles de paie, paramètres",
   },
   {
-    role: "Collaborateur",
-    email: "aminata.diallo@payrollflow.demo",
+    role: "Collaborateur — bulletin officiel",
+    email: "yao.lassidan@payrollflow.demo",
     password: "Horizon2026!",
-    hint: "Bulletins personnels et profil",
+    hint: "Fiche de paie identique au bulletin Cerfa (août 2026)",
   },
 ];
 
@@ -45,7 +45,7 @@ export function LoginPage() {
       <section className="relative hidden overflow-hidden bg-sage-dark text-white lg:flex lg:flex-col lg:justify-between lg:p-12">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(196,165,116,0.25),transparent_45%)]" />
         <div className="relative">
-          <p className="text-xs font-semibold tracking-[0.28em] text-gold uppercase">Horizon Afrique Consulting</p>
+          <p className="text-xs font-semibold tracking-[0.28em] text-gold uppercase">ANTARES DS · bulletin officiel</p>
           <h1 className="font-display mt-4 max-w-md text-5xl">PayRollFlow</h1>
           <p className="mt-4 max-w-sm text-white/70">
             Accès nominatif. Les comptes sont créés par le service RH — il n’y a pas d’inscription en ligne.

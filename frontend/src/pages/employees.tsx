@@ -29,6 +29,19 @@ const emptyForm = {
   iban: "",
   city: "",
   country: "France",
+  civility: "M" as const,
+  matricule: "",
+  address: "",
+  postalCode: "",
+  socialSecurityNumber: "",
+  category: "Non Cadre",
+  coefficient: "220",
+  classificationIndex: "1.3.1",
+  qualification: "",
+  contractHours: 151.67,
+  pasRate: 0,
+  mealTicket5: 0,
+  mealTicket1650: 0,
 };
 
 export function EmployeesPage() {
@@ -279,6 +292,51 @@ export function EmployeeForm({
       </Field>
       <Field label="Pays">
         <Input value={form.country} onChange={(e) => set("country", e.target.value)} required />
+      </Field>
+      <Field label="Civilité">
+        <Select value={form.civility} onChange={(e) => set("civility", e.target.value as EmployeeDraft["civility"])}>
+          <option value="M">M</option>
+          <option value="Mme">Mme</option>
+        </Select>
+      </Field>
+      <Field label="Matricule">
+        <Input value={form.matricule} onChange={(e) => set("matricule", e.target.value)} placeholder="1212" />
+      </Field>
+      <Field label="Adresse">
+        <Input value={form.address} onChange={(e) => set("address", e.target.value)} />
+      </Field>
+      <Field label="Code postal">
+        <Input value={form.postalCode} onChange={(e) => set("postalCode", e.target.value)} />
+      </Field>
+      <Field label="N° sécu">
+        <Input value={form.socialSecurityNumber} onChange={(e) => set("socialSecurityNumber", e.target.value)} />
+      </Field>
+      <Field label="Catégorie">
+        <Select value={form.category} onChange={(e) => set("category", e.target.value)}>
+          <option>Non Cadre</option>
+          <option>Cadre</option>
+        </Select>
+      </Field>
+      <Field label="Coefficient">
+        <Input value={form.coefficient} onChange={(e) => set("coefficient", e.target.value)} />
+      </Field>
+      <Field label="Indice / classification">
+        <Input value={form.classificationIndex} onChange={(e) => set("classificationIndex", e.target.value)} />
+      </Field>
+      <Field label="Qualification">
+        <Input value={form.qualification} onChange={(e) => set("qualification", e.target.value)} />
+      </Field>
+      <Field label="Horaire mensuel (heures)">
+        <Input type="number" step="0.001" value={form.contractHours} onChange={(e) => set("contractHours", Number(e.target.value))} />
+      </Field>
+      <Field label="Taux PAS">
+        <Input type="number" step="0.001" value={form.pasRate} onChange={(e) => set("pasRate", Number(e.target.value))} />
+      </Field>
+      <Field label="Indem. repas 5 € (qté)">
+        <Input type="number" min={0} value={form.mealTicket5} onChange={(e) => set("mealTicket5", Number(e.target.value))} />
+      </Field>
+      <Field label="Indem. repas 16,50 € (qté)">
+        <Input type="number" min={0} value={form.mealTicket1650} onChange={(e) => set("mealTicket1650", Number(e.target.value))} />
       </Field>
       <div className="sm:col-span-2">
         <Field label="IBAN">

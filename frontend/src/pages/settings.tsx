@@ -51,7 +51,7 @@ export function SettingsPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2 className="font-display text-3xl sm:text-4xl">Paramètres</h2>
-          <p className="mt-2 text-sm text-ink/60">Société, devise et barème de cotisations utilisé par le moteur de paie.</p>
+          <p className="mt-2 text-sm text-ink/60">Identité employeur du bulletin officiel, devise et barème de cotisations.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => void resetDemo()}>
@@ -73,8 +73,32 @@ export function SettingsPage() {
             <Input value={settings.companyName} onChange={(e) => setSettings({ ...settings, companyName: e.target.value })} />
           </div>
           <div>
-            <Label>Localisation</Label>
+            <Label>Adresse</Label>
+            <Input value={settings.companyAddress ?? ""} onChange={(e) => setSettings({ ...settings, companyAddress: e.target.value })} />
+          </div>
+          <div>
+            <Label>Code postal</Label>
+            <Input value={settings.companyPostalCode ?? ""} onChange={(e) => setSettings({ ...settings, companyPostalCode: e.target.value })} />
+          </div>
+          <div>
+            <Label>Ville</Label>
             <Input value={settings.companyCity} onChange={(e) => setSettings({ ...settings, companyCity: e.target.value })} />
+          </div>
+          <div>
+            <Label>SIRET</Label>
+            <Input value={settings.siret ?? ""} onChange={(e) => setSettings({ ...settings, siret: e.target.value })} />
+          </div>
+          <div>
+            <Label>APE / NAF</Label>
+            <Input value={settings.ape ?? ""} onChange={(e) => setSettings({ ...settings, ape: e.target.value })} />
+          </div>
+          <div>
+            <Label>Convention collective</Label>
+            <Input value={settings.conventionCollective ?? ""} onChange={(e) => setSettings({ ...settings, conventionCollective: e.target.value })} />
+          </div>
+          <div>
+            <Label>Mode de paiement</Label>
+            <Input value={settings.paymentMethod ?? ""} onChange={(e) => setSettings({ ...settings, paymentMethod: e.target.value })} />
           </div>
           <div>
             <Label>Devise</Label>
@@ -97,6 +121,14 @@ export function SettingsPage() {
           <div>
             <Label>Majoration HS</Label>
             <Input type="number" step="0.05" value={settings.overtimeRate} onChange={(e) => setSettings({ ...settings, overtimeRate: Number(e.target.value) })} />
+          </div>
+          <div>
+            <Label>SMIC horaire</Label>
+            <Input type="number" step="0.01" value={settings.smicHourly ?? 11.88} onChange={(e) => setSettings({ ...settings, smicHourly: Number(e.target.value) })} />
+          </div>
+          <div>
+            <Label>Coeff. réduction générale</Label>
+            <Input type="number" step="0.0001" value={settings.fillonT ?? 0.3195} onChange={(e) => setSettings({ ...settings, fillonT: Number(e.target.value) })} />
           </div>
         </CardContent>
       </Card>
@@ -126,7 +158,7 @@ export function SettingsPage() {
                       }
                     />
                   </td>
-                  <td className="py-2">{rate.base === "csg" ? "CSG (98,25%)" : "Brut"}</td>
+                  <td className="py-2">{rate.base === "csg" ? "CSG (98,25%)" : rate.base === "mutuelle" ? "Mutuelle" : "Brut"}</td>
                   <td className="py-2">
                     <Input
                       type="number"

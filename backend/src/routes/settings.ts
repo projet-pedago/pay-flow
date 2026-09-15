@@ -15,19 +15,28 @@ settingsRouter.put("/", (req, res) => {
   const parsed = z
     .object({
       companyName: z.string().min(1).optional(),
+      companyAddress: z.string().optional(),
+      companyPostalCode: z.string().optional(),
       companyCity: z.string().min(1).optional(),
+      siret: z.string().optional(),
+      ape: z.string().optional(),
+      conventionCollective: z.string().optional(),
+      paymentMethod: z.string().optional(),
       currency: z.enum(["EUR", "XOF"]).optional(),
       workingDays: z.number().positive().optional(),
       monthlyHours: z.number().positive().optional(),
       overtimeRate: z.number().positive().optional(),
+      smicHourly: z.number().positive().optional(),
+      fillonT: z.number().min(0).optional(),
       rates: z
         .array(
           z.object({
             id: z.string(),
             label: z.string(),
-            employeeRate: z.number().min(0),
-            employerRate: z.number().min(0),
-            base: z.enum(["gross", "csg"]),
+            employeeRate: z.number(),
+            employerRate: z.number(),
+            base: z.enum(["gross", "csg", "mutuelle"]),
+            section: z.string().optional(),
           }),
         )
         .optional(),

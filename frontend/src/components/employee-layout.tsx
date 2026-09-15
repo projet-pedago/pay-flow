@@ -1,6 +1,6 @@
 import { Banknote, CalendarDays, FileText, FolderOpen, Home, LogOut, Menu, UserRound, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { NotificationBell } from "@/components/notification-bell";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
@@ -18,6 +18,12 @@ const links = [
 export function EmployeeLayout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
+  const location = useLocation();
+  const printMode = /\/bulletins\/[^/]+$/.test(location.pathname);
+
+  if (printMode) {
+    return <div className="min-h-screen bg-white">{children}</div>;
+  }
 
   return (
     <div className="min-h-screen bg-[#eef3f8] text-[#16324f]">

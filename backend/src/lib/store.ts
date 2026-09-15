@@ -42,6 +42,40 @@ export function loadStore(): Store {
     store.notifications = [];
     dirty = true;
   }
+  if (!store.settings.companyAddress) {
+    store.settings = {
+      ...store.settings,
+      companyAddress: store.settings.companyAddress ?? "",
+      companyPostalCode: store.settings.companyPostalCode ?? "",
+      siret: store.settings.siret ?? "",
+      ape: store.settings.ape ?? "",
+      conventionCollective: store.settings.conventionCollective ?? "Syntec",
+      paymentMethod: store.settings.paymentMethod ?? "Virement",
+      smicHourly: store.settings.smicHourly ?? 11.88,
+      fillonT: store.settings.fillonT ?? 0.3195,
+    };
+    dirty = true;
+  }
+  store.employees = store.employees.map((employee, index) => {
+    if (employee.matricule && employee.contractHours) return employee;
+    dirty = true;
+    return {
+      ...employee,
+      civility: employee.civility ?? "M",
+      matricule: employee.matricule ?? String(1001 + index),
+      address: employee.address ?? "",
+      postalCode: employee.postalCode ?? "",
+      socialSecurityNumber: employee.socialSecurityNumber ?? "",
+      category: employee.category ?? "Non Cadre",
+      coefficient: employee.coefficient ?? "220",
+      classificationIndex: employee.classificationIndex ?? "1.3.1",
+      qualification: employee.qualification ?? "",
+      contractHours: employee.contractHours ?? store.settings.monthlyHours,
+      pasRate: employee.pasRate ?? 0,
+      mealTicket5: employee.mealTicket5 ?? 0,
+      mealTicket1650: employee.mealTicket1650 ?? 0,
+    };
+  });
   if (dirty) writeStore(store);
   return store;
 }

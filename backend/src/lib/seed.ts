@@ -4,25 +4,78 @@ import {
   DEMO_EMPLOYEE_PASSWORD,
 } from "../auth-constants.js";
 import { hashPassword } from "../auth.js";
-import type { AuthUser, Employee, Store } from "../types.js";
+import type { AuthUser, Civility, Employee, Store } from "../types.js";
 import { calculatePayslip } from "./payroll.js";
 
 const rates = [
-  { id: "maladie", label: "Assurance maladie", employeeRate: 0, employerRate: 0.07, base: "gross" as const },
-  { id: "vieillesse-plaf", label: "Assurance vieillesse plafonnée", employeeRate: 0.069, employerRate: 0.0855, base: "gross" as const },
-  { id: "vieillesse", label: "Assurance vieillesse déplafonnée", employeeRate: 0.004, employerRate: 0.019, base: "gross" as const },
-  { id: "famille", label: "Allocations familiales", employeeRate: 0, employerRate: 0.0345, base: "gross" as const },
-  { id: "at", label: "Accidents du travail", employeeRate: 0, employerRate: 0.012, base: "gross" as const },
-  { id: "chomage", label: "Assurance chômage", employeeRate: 0, employerRate: 0.0405, base: "gross" as const },
-  { id: "retraite-t1", label: "Retraite complémentaire T1", employeeRate: 0.0315, employerRate: 0.0472, base: "gross" as const },
-  { id: "ceg", label: "CEG", employeeRate: 0.0086, employerRate: 0.0129, base: "gross" as const },
-  { id: "csg-ded", label: "CSG déductible", employeeRate: 0.068, employerRate: 0, base: "csg" as const },
-  { id: "csg-nd", label: "CSG non déductible", employeeRate: 0.024, employerRate: 0, base: "csg" as const },
-  { id: "crds", label: "CRDS", employeeRate: 0.005, employerRate: 0, base: "csg" as const },
+  { id: "maladie", label: "Sécurité Sociale - Maladie Maternité Invalidité Décès", section: "SANTE", employeeRate: 0, employerRate: 0.13, base: "gross" as const },
+  { id: "mutuelle", label: "Complémentaire Santé", section: "SANTE", employeeRate: 0.00325, employerRate: 0.00325, base: "gross" as const },
+  { id: "at", label: "ACCIDENTS DE TRAVAIL-MALADIES PROFESSIONNELLES", employeeRate: 0, employerRate: 0.007, base: "gross" as const },
+  { id: "vieillesse-plaf", label: "Sécurité Sociale plafonnée", section: "RETRAITE", employeeRate: 0.069, employerRate: 0.0855, base: "gross" as const },
+  { id: "vieillesse", label: "Sécurité Sociale déplafonnée", section: "RETRAITE", employeeRate: 0.004, employerRate: 0.0211, base: "gross" as const },
+  { id: "retraite-t1", label: "Complémentaire Tranche 1", section: "RETRAITE", employeeRate: 0.0401, employerRate: 0.0601, base: "gross" as const },
+  { id: "famille", label: "FAMILLE-SECURITE SOCIALE", employeeRate: 0, employerRate: 0.0525, base: "gross" as const },
+  { id: "chomage", label: "ASSURANCE CHOMAGE", employeeRate: 0, employerRate: 0.0425, base: "gross" as const },
+  { id: "autres", label: "AUTRES CONTRIBUTIONS DUES PAR L'EMPLOYEUR", employeeRate: 0, employerRate: 0.07693, base: "gross" as const },
+  { id: "forfait-social", label: "Forfait social", employeeRate: 0, employerRate: 0.08, base: "mutuelle" as const },
+  { id: "csg-non-imp", label: "CSG non imposable à l'impôt sur le revenu", employeeRate: 0.068, employerRate: 0, base: "csg" as const },
+  { id: "csg-imp", label: "CSG/CRDS imposable à l'impôt sur le revenu", employeeRate: 0.029, employerRate: 0, base: "csg" as const },
 ];
 
 function uid(prefix: string, n: number) {
   return `${prefix}-${String(n).padStart(3, "0")}`;
+}
+
+function staff(
+  n: number,
+  data: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    departmentId: string;
+    jobTitle: string;
+    contractType: Employee["contractType"];
+    hireDate: string;
+    baseSalary: number;
+    status: Employee["status"];
+    iban: string;
+    city: string;
+    country?: string;
+    civility?: Civility;
+    matricule?: string;
+    address?: string;
+    postalCode?: string;
+    socialSecurityNumber?: string;
+    category?: string;
+    coefficient?: string;
+    classificationIndex?: string;
+    qualification?: string;
+    contractHours?: number;
+    pasRate?: number;
+    mealTicket5?: number;
+    mealTicket1650?: number;
+  },
+): Employee {
+  const cadre = /directeur|directrice|lead|responsable|chef/i.test(data.jobTitle);
+  return {
+    country: "France",
+    ...data,
+    id: uid("emp", n),
+    civility: data.civility ?? (["Aminata", "Fatou", "Aïcha", "Léa", "Camille", "Sofia", "Inès"].includes(data.firstName) ? "Mme" : "M"),
+    matricule: data.matricule ?? String(1000 + n),
+    address: data.address ?? `${10 + n} RUE DE LA REPUBLIQUE`,
+    postalCode: data.postalCode ?? "75001",
+    socialSecurityNumber: data.socialSecurityNumber ?? `1 90 01 75 ${String(100 + n).padStart(3, "0")} ${String(n).padStart(3, "0")} 12`,
+    category: data.category ?? (cadre ? "Cadre" : "Non Cadre"),
+    coefficient: data.coefficient ?? (cadre ? "400" : "220"),
+    classificationIndex: data.classificationIndex ?? (cadre ? "3.1" : "1.3.1"),
+    qualification: data.qualification ?? "",
+    contractHours: data.contractHours ?? 151.67,
+    pasRate: data.pasRate ?? 0,
+    mealTicket5: data.mealTicket5 ?? 8,
+    mealTicket1650: data.mealTicket1650 ?? 0,
+  };
 }
 
 export function createSeed(): Store {
@@ -32,210 +85,66 @@ export function createSeed(): Store {
     { id: uid("dep", 3), name: "Ingénierie", code: "ING", budget: 420000, color: "#7c3aed" },
     { id: uid("dep", 4), name: "Opérations", code: "OPS", budget: 210000, color: "#c2410c" },
     { id: uid("dep", 5), name: "Finance", code: "FIN", budget: 150000, color: "#0f172a" },
+    { id: uid("dep", 6), name: "CDP TRANSFERT", code: "CDP", budget: 72000, color: "#475569" },
   ];
 
   const employees = [
-    {
-      id: uid("emp", 1),
-      firstName: "Aminata",
-      lastName: "Diallo",
-      email: "aminata.diallo@payrollflow.demo",
-      phone: "+33 6 12 44 81 02",
-      departmentId: uid("dep", 1),
-      jobTitle: "Directrice générale",
-      contractType: "CDI" as const,
-      hireDate: "2019-03-01",
-      baseSalary: 7200,
-      status: "active" as const,
-      iban: "FR76 ACCT-000039 7890 123",
-      city: "Paris",
-      country: "France",
-    },
-    {
-      id: uid("emp", 2),
-      firstName: "Jean-Pierre",
-      lastName: "Kouamé",
-      email: "jp.kouame@payrollflow.demo",
-      phone: "+33 6 18 22 09 41",
-      departmentId: uid("dep", 3),
-      jobTitle: "Lead DevOps",
-      contractType: "CDI" as const,
-      hireDate: "2021-06-15",
-      baseSalary: 5400,
-      status: "active" as const,
-      iban: "FR76 ACCT-000011 7890 123",
-      city: "Lyon",
-      country: "France",
-    },
-    {
-      id: uid("emp", 3),
-      firstName: "Fatou",
-      lastName: "Ndiaye",
-      email: "fatou.ndiaye@payrollflow.demo",
-      phone: "+33 7 44 12 88 03",
-      departmentId: uid("dep", 2),
-      jobTitle: "Responsable paie",
-      contractType: "CDI" as const,
-      hireDate: "2020-01-08",
-      baseSalary: 4100,
-      status: "active" as const,
-      iban: "FR76 ACCT-000033 7890 123",
-      city: "Dakar",
-      country: "Sénégal",
-    },
-    {
-      id: uid("emp", 4),
-      firstName: "Hugo",
-      lastName: "Bernard",
-      email: "hugo.bernard@payrollflow.demo",
-      phone: "+33 6 55 01 19 77",
-      departmentId: uid("dep", 3),
-      jobTitle: "Ingénieur cloud Azure",
-      contractType: "CDI" as const,
-      hireDate: "2022-09-12",
-      baseSalary: 4600,
-      status: "active" as const,
-      iban: "FR76 ACCT-000028 7890 123",
-      city: "Nantes",
-      country: "France",
-    },
-    {
-      id: uid("emp", 5),
-      firstName: "Aïcha",
-      lastName: "Traoré",
-      email: "aicha.traore@payrollflow.demo",
-      phone: "+225 07 08 44 21 90",
-      departmentId: uid("dep", 4),
-      jobTitle: "Cheffe des opérations",
-      contractType: "CDI" as const,
-      hireDate: "2018-11-04",
-      baseSalary: 3900,
-      status: "active" as const,
-      iban: "CI93 CI008 01111 2222 3333 44",
-      city: "Abidjan",
-      country: "Côte d'Ivoire",
-    },
-    {
-      id: uid("emp", 6),
-      firstName: "Léa",
-      lastName: "Moreau",
-      email: "lea.moreau@payrollflow.demo",
-      phone: "+33 6 77 12 45 08",
-      departmentId: uid("dep", 5),
-      jobTitle: "Contrôleuse de gestion",
-      contractType: "CDI" as const,
-      hireDate: "2023-02-20",
-      baseSalary: 3600,
-      status: "on_leave" as const,
-      iban: "FR76 ACCT-000015 7890 123",
-      city: "Bordeaux",
-      country: "France",
-    },
-    {
-      id: uid("emp", 7),
-      firstName: "Omar",
-      lastName: "Benali",
-      email: "omar.benali@payrollflow.demo",
-      phone: "+33 7 11 90 22 54",
-      departmentId: uid("dep", 3),
-      jobTitle: "Développeur backend",
-      contractType: "CDI" as const,
-      hireDate: "2024-01-15",
-      baseSalary: 3400,
-      status: "active" as const,
-      iban: "FR76 ACCT-000040 7890 123",
-      city: "Marseille",
-      country: "France",
-    },
-    {
-      id: uid("emp", 8),
-      firstName: "Camille",
-      lastName: "Roux",
-      email: "camille.roux@payrollflow.demo",
-      phone: "+33 6 02 88 41 17",
-      departmentId: uid("dep", 2),
-      jobTitle: "Chargée RH",
-      contractType: "CDD" as const,
-      hireDate: "2025-03-01",
-      baseSalary: 2800,
-      status: "active" as const,
-      iban: "FR76 ACCT-000035 7890 123",
-      city: "Lille",
-      country: "France",
-    },
-    {
-      id: uid("emp", 9),
-      firstName: "Kwame",
-      lastName: "Mensah",
-      email: "kwame.mensah@payrollflow.demo",
-      phone: "+233 24 555 0192",
-      departmentId: uid("dep", 3),
-      jobTitle: "Ingénieur frontend",
-      contractType: "CDI" as const,
-      hireDate: "2023-07-10",
-      baseSalary: 3700,
-      status: "active" as const,
-      iban: "GH20 GH001 0000 1111 222",
-      city: "Accra",
-      country: "Ghana",
-    },
-    {
-      id: uid("emp", 10),
-      firstName: "Sofia",
-      lastName: "Martins",
-      email: "sofia.martins@payrollflow.demo",
-      phone: "+33 6 41 77 03 29",
-      departmentId: uid("dep", 5),
-      jobTitle: "Comptable paie",
-      contractType: "CDI" as const,
-      hireDate: "2021-04-19",
-      baseSalary: 3100,
-      status: "active" as const,
-      iban: "FR76 ACCT-000012 7890 123",
-      city: "Toulouse",
-      country: "France",
-    },
-    {
-      id: uid("emp", 11),
-      firstName: "Yanis",
-      lastName: "Haddad",
-      email: "yanis.haddad@payrollflow.demo",
-      phone: "+33 7 33 10 64 82",
-      departmentId: uid("dep", 4),
-      jobTitle: "Coordinateur logistique",
-      contractType: "CDI" as const,
-      hireDate: "2022-01-03",
-      baseSalary: 2950,
-      status: "active" as const,
-      iban: "FR76 ACCT-000007 7890 123",
-      city: "Strasbourg",
-      country: "France",
-    },
-    {
-      id: uid("emp", 12),
-      firstName: "Inès",
-      lastName: "Petit",
-      email: "ines.petit@payrollflow.demo",
-      phone: "+33 6 90 14 55 61",
-      departmentId: uid("dep", 3),
-      jobTitle: "Apprentie QA",
-      contractType: "Alternance" as const,
-      hireDate: "2025-09-01",
-      baseSalary: 1450,
-      status: "active" as const,
-      iban: "FR76 ACCT-000041 7890 123",
-      city: "Rennes",
-      country: "France",
-    },
+    staff(1, { firstName: "Aminata", lastName: "Diallo", email: "aminata.diallo@payrollflow.demo", phone: "+33 6 12 44 81 02", departmentId: uid("dep", 1), jobTitle: "Directrice générale", contractType: "CDI", hireDate: "2019-03-01", baseSalary: 7200, status: "active", iban: "FR76 ACCT-000039 7890 123", city: "Paris", address: "18 AVENUE DE L OPERA", postalCode: "75001", mealTicket5: 0 }),
+    staff(2, { firstName: "Jean-Pierre", lastName: "Kouamé", email: "jp.kouame@payrollflow.demo", phone: "+33 6 18 22 09 41", departmentId: uid("dep", 3), jobTitle: "Lead DevOps", contractType: "CDI", hireDate: "2021-06-15", baseSalary: 5400, status: "active", iban: "FR76 ACCT-000011 7890 123", city: "Lyon", address: "4 RUE DE LA REPUBLIQUE", postalCode: "69001" }),
+    staff(3, { firstName: "Fatou", lastName: "Ndiaye", email: "fatou.ndiaye@payrollflow.demo", phone: "+33 7 44 12 88 03", departmentId: uid("dep", 2), jobTitle: "Responsable paie", contractType: "CDI", hireDate: "2020-01-08", baseSalary: 4100, status: "active", iban: "FR76 ACCT-000033 7890 123", city: "Paris", address: "9 RUE DES MARTYRS", postalCode: "75009" }),
+    staff(4, { firstName: "Hugo", lastName: "Bernard", email: "hugo.bernard@payrollflow.demo", phone: "+33 6 55 01 19 77", departmentId: uid("dep", 3), jobTitle: "Ingénieur cloud Azure", contractType: "CDI", hireDate: "2022-09-12", baseSalary: 4600, status: "active", iban: "FR76 ACCT-000028 7890 123", city: "Nantes", address: "21 RUE CREBILLON", postalCode: "44000" }),
+    staff(5, { firstName: "Aïcha", lastName: "Traoré", email: "aicha.traore@payrollflow.demo", phone: "+33 7 08 44 21 90", departmentId: uid("dep", 4), jobTitle: "Cheffe des opérations", contractType: "CDI", hireDate: "2018-11-04", baseSalary: 3900, status: "active", iban: "FR76 ACCT-000022 7890 123", city: "Paris", address: "55 BOULEVARD VOLTAIRE", postalCode: "75011" }),
+    staff(6, { firstName: "Léa", lastName: "Moreau", email: "lea.moreau@payrollflow.demo", phone: "+33 6 77 12 45 08", departmentId: uid("dep", 5), jobTitle: "Contrôleuse de gestion", contractType: "CDI", hireDate: "2023-02-20", baseSalary: 3600, status: "on_leave", iban: "FR76 ACCT-000015 7890 123", city: "Bordeaux", address: "8 COURS DE L INTENDANCE", postalCode: "33000" }),
+    staff(7, { firstName: "Omar", lastName: "Benali", email: "omar.benali@payrollflow.demo", phone: "+33 7 11 90 22 54", departmentId: uid("dep", 3), jobTitle: "Développeur backend", contractType: "CDI", hireDate: "2024-01-15", baseSalary: 3400, status: "active", iban: "FR76 ACCT-000040 7890 123", city: "Marseille", address: "14 LA CANEBIERE", postalCode: "13001" }),
+    staff(8, { firstName: "Camille", lastName: "Roux", email: "camille.roux@payrollflow.demo", phone: "+33 6 02 88 41 17", departmentId: uid("dep", 2), jobTitle: "Chargée RH", contractType: "CDD", hireDate: "2025-03-01", baseSalary: 2800, status: "active", iban: "FR76 ACCT-000035 7890 123", city: "Lille", address: "3 RUE FAIDHERBE", postalCode: "59000" }),
+    staff(9, { firstName: "Kwame", lastName: "Mensah", email: "kwame.mensah@payrollflow.demo", phone: "+33 6 24 55 01 92", departmentId: uid("dep", 3), jobTitle: "Ingénieur frontend", contractType: "CDI", hireDate: "2023-07-10", baseSalary: 3700, status: "active", iban: "FR76 ACCT-000018 7890 123", city: "Paris", address: "27 RUE OBERKAMPF", postalCode: "75011" }),
+    staff(10, { firstName: "Sofia", lastName: "Martins", email: "sofia.martins@payrollflow.demo", phone: "+33 6 41 77 03 29", departmentId: uid("dep", 5), jobTitle: "Comptable paie", contractType: "CDI", hireDate: "2021-04-19", baseSalary: 3100, status: "active", iban: "FR76 ACCT-000012 7890 123", city: "Toulouse", address: "11 RUE D ALSACE LORRAINE", postalCode: "31000" }),
+    staff(11, { firstName: "Yanis", lastName: "Haddad", email: "yanis.haddad@payrollflow.demo", phone: "+33 7 33 10 64 82", departmentId: uid("dep", 4), jobTitle: "Coordinateur logistique", contractType: "CDI", hireDate: "2022-01-03", baseSalary: 2950, status: "active", iban: "FR76 ACCT-000007 7890 123", city: "Strasbourg", address: "6 PLACE KLEBER", postalCode: "67000" }),
+    staff(12, { firstName: "Inès", lastName: "Petit", email: "ines.petit@payrollflow.demo", phone: "+33 6 90 14 55 61", departmentId: uid("dep", 3), jobTitle: "Apprentie QA", contractType: "Alternance", hireDate: "2025-09-01", baseSalary: 1450, status: "active", iban: "FR76 ACCT-000041 7890 123", city: "Rennes", address: "2 RUE SAINT MICHEL", postalCode: "35000", category: "Non Cadre", coefficient: "150", mealTicket5: 10 }),
+    staff(13, {
+      firstName: "Yao",
+      lastName: "Lassidan",
+      email: "yao.lassidan@payrollflow.demo",
+      phone: "+33 6 12 12 08 31",
+      departmentId: uid("dep", 6),
+      jobTitle: "Technicien Inventaire Informat",
+      contractType: "CDI",
+      hireDate: "2023-09-27",
+      baseSalary: 827.23,
+      status: "active",
+      iban: "FR76 ACCT-000012 1212 000",
+      city: "GENTILLY",
+      civility: "M",
+      matricule: "1212",
+      address: "2 RUE ARISTIDE BRIAND",
+      postalCode: "94250",
+      socialSecurityNumber: "1000299326201 35",
+      category: "Non Cadre",
+      coefficient: "220",
+      classificationIndex: "1.3.1",
+      qualification: "",
+      contractHours: 56,
+      pasRate: 0,
+      mealTicket5: 4,
+      mealTicket1650: 2,
+    }),
   ];
 
   const settings = {
-    companyName: "Horizon Afrique Consulting",
-    companyCity: "Paris / Abidjan",
+    companyName: "ANTARES DS",
+    companyAddress: "10 RUE DE L ASIPRANT D'ARGENT",
+    companyPostalCode: "92300",
+    companyCity: "LEVALLOIS PERRET",
+    siret: "43431517200040",
+    ape: "7112B",
+    conventionCollective: "Syntec",
+    paymentMethod: "Virement",
     currency: "EUR" as const,
     workingDays: 22,
     monthlyHours: 151.67,
     overtimeRate: 1.25,
+    smicHourly: 11.88,
+    fillonT: 0.3195,
   };
 
   const extras: Record<string, { overtimeHours: number; bonus: number; workedDays: number }> = {
@@ -244,30 +153,33 @@ export function createSeed(): Store {
     [uid("emp", 6)]: { overtimeHours: 0, bonus: 0, workedDays: 12 },
     [uid("emp", 7)]: { overtimeHours: 10, bonus: 150, workedDays: 22 },
     [uid("emp", 12)]: { overtimeHours: 0, bonus: 0, workedDays: 22 },
+    [uid("emp", 13)]: { overtimeHours: 0, bonus: 0, workedDays: 22 },
   };
 
   const periods = [
     { id: uid("per", 1), year: 2026, month: 7, status: "paid" as const, createdAt: "2026-07-28T09:00:00.000Z", calculatedAt: "2026-07-29T10:00:00.000Z", validatedAt: "2026-07-30T14:00:00.000Z", paidAt: "2026-07-31T08:00:00.000Z" },
-    { id: uid("per", 2), year: 2026, month: 8, status: "validated" as const, createdAt: "2026-08-27T09:00:00.000Z", calculatedAt: "2026-08-28T11:00:00.000Z", validatedAt: "2026-08-29T16:00:00.000Z" },
+    { id: uid("per", 2), year: 2026, month: 8, status: "validated" as const, createdAt: "2026-08-27T09:00:00.000Z", calculatedAt: "2026-08-28T11:00:00.000Z", validatedAt: "2026-08-29T16:00:00.000Z", paidAt: "2026-08-31T08:00:00.000Z" },
     { id: uid("per", 3), year: 2026, month: 9, status: "draft" as const, createdAt: "2026-09-10T09:00:00.000Z" },
   ];
 
   const payslips = periods.flatMap((period) => {
     if (period.status === "draft") return [];
     return employees.map((employee) => {
-        const extra = extras[employee.id] ?? { overtimeHours: 2, bonus: 0, workedDays: 22 };
-        return calculatePayslip({
-          employee,
-          periodId: period.id,
-          workedDays: extra.workedDays,
-          overtimeHours: extra.overtimeHours,
-          bonus: extra.bonus,
-          workingDays: settings.workingDays,
-          monthlyHours: settings.monthlyHours,
-          overtimeRate: settings.overtimeRate,
-          rates,
-        });
+      const extra = extras[employee.id] ?? { overtimeHours: 2, bonus: 0, workedDays: 22 };
+      return calculatePayslip({
+        employee,
+        periodId: period.id,
+        workedDays: extra.workedDays,
+        overtimeHours: extra.overtimeHours,
+        bonus: extra.bonus,
+        workingDays: settings.workingDays,
+        monthlyHours: settings.monthlyHours,
+        overtimeRate: settings.overtimeRate,
+        smicHourly: settings.smicHourly,
+        fillonT: settings.fillonT,
+        rates,
       });
+    });
   });
 
   return {

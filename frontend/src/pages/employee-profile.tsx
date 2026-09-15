@@ -68,6 +68,8 @@ export function EmployeeProfilePage() {
             <p className="font-semibold">{department?.name ?? "—"}</p>
             <p className="text-[#16324f]/45">Salaire de base</p>
             <p className="font-semibold">{money(employee.baseSalary, settings.currency)} / mois</p>
+            <p className="text-[#16324f]/45">Matricule</p>
+            <p className="font-semibold">{employee.matricule || "—"}</p>
             <p className="text-xs text-[#16324f]/40">Le salaire n’est modifiable que par un administrateur.</p>
           </CardContent>
         </Card>

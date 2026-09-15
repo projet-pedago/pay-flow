@@ -1,6 +1,6 @@
 # PayRollFlow
 
-Gestion de paie en **microservices**, pensée comme un socle concurrentiel (PayFit, ADP, Sage, Cegid) : paie, temps, acomptes, dossier RH, conformité et espace collaborateur.
+Gestion de paie en **microservices**. Les bulletins sont générés au format **officiel français** (Cerfa / bulletin de paie), sur le modèle d’un bulletin réel : ANTARES DS, matricule, SIRET, cotisations SANTE / RETRAITE / CSG, net à payer, PAS et cumuls.
 
 Il n’y a **pas d’inscription**. Les comptes sont fournis par le service RH.
 
@@ -9,13 +9,28 @@ Il n’y a **pas d’inscription**. Les comptes sont fournis par le service RH.
 | Rôle | Email | Mot de passe | Interface |
 | --- | --- | --- | --- |
 | Administrateur | `admin@payrollflow.demo` | `AdminHorizon2026!` | Console de pilotage |
-| Collaborateur | `aminata.diallo@payrollflow.demo` | `Horizon2026!` | Espace personnel |
+| Collaborateur (bulletin officiel) | `yao.lassidan@payrollflow.demo` | `Horizon2026!` | Fiche de paie août 2026, à l’identique |
+| Autres collaborateurs | leur email professionnel | `Horizon2026!` | Espace personnel |
 
-Les autres employés se connectent avec le même mot de passe `Horizon2026!` et leur email professionnel.
+Ouvrez **Mes bulletins → août 2026** avec le compte Yao Lassidan, puis **Imprimer / PDF** pour obtenir la fiche A4.
+
+## Bulletin officiel
+
+Le document reprend la structure légale :
+
+- Période, paiement, matricule, ancienneté
+- Employeur (SIRET, APE, convention Syntec, indice, coefficient, horaire)
+- Salarié (adresse, n° sécu, emploi, département, catégorie)
+- Tableau Désignation / Nombre / Base / Taux salarial / Gain / Retenue / Part employeur
+- Totaux brut, cotisations, indemnités repas, compteurs de congés
+- NET A PAYER, allègement Fillon, total versé par l’employeur
+- Prélèvement à la source et cumuls période / année
+
+Les paramètres société (adresse, SIRET, convention) et la fiche RH (matricule, n° sécu, horaire, tickets repas) alimentent le bulletin.
 
 ## Modules livrés
 
-- Paie : cycles, bulletins, acomptes déduits du net, export fichier de virement
+- Paie : cycles, bulletins officiels A4, acomptes déduits du net, export fichier de virement
 - Temps : congés / RTT / maladie, soldes, validation RH
 - Dossier RH : CNI, RIB, contrat, Vitale
 - Conformité : IBAN, absences et acomptes en attente, pièces manquantes

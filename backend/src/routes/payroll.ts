@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { getUser, requireAuth } from "../auth.js";
+import { bulletinMeta } from "../lib/bulletin.js";
 import { leaveDaysInMonth } from "../lib/dates.js";
 import { notifyEmployee } from "../lib/notify.js";
 import { calculatePayslip } from "../lib/payroll.js";
@@ -136,6 +137,8 @@ payrollRouter.post("/periods/:id/calculate", (req, res) => {
           workingDays: store.settings.workingDays,
           monthlyHours: store.settings.monthlyHours,
           overtimeRate: store.settings.overtimeRate,
+          smicHourly: store.settings.smicHourly,
+          fillonT: store.settings.fillonT,
           rates: store.rates,
         });
         notifyEmployee(store, employee.id, {
@@ -247,5 +250,18 @@ payrollRouter.get("/payslips/:id", (req, res) => {
   const employee = store.employees.find((item) => item.id === payslip.employeeId);
   const department = store.departments.find((item) => item.id === employee?.departmentId);
   const period = store.periods.find((item) => item.id === payslip.periodId);
-  res.json({ payslip, employee, department, period, settings: store.settings });
+  if (!employee || !period) {
+    res.status(404).json({ error: "Bulletin incomplet" });
+    return;
+  }
+  const bulletin = bulletinMeta({
+    employee,
+    period,
+    settings: store.settings,
+    payslip,
+    leaves: store.leaves,
+    payslips: store.payslips,
+    periods: store.periods,
+  });
+  res.json({ payslip, employee, department, period, settings: store.settings, bulletin });
 });

@@ -25,16 +25,26 @@ function preview(
   rates: ContributionRate[],
   advance = 0,
 ) {
+  const contractHours = employee.contractHours || settings.monthlyHours;
   const ratio = Math.min(Math.max(entry.workedDays / settings.workingDays, 0), 1);
-  const proratedBase = employee.baseSalary * ratio;
-  const overtimePay = entry.overtimeHours * (employee.baseSalary / settings.monthlyHours) * settings.overtimeRate;
+  const hours = contractHours * ratio;
+  const hourly = employee.baseSalary / contractHours;
+  const proratedBase = hourly * hours;
+  const overtimePay = entry.overtimeHours * hourly * settings.overtimeRate;
   const gross = proratedBase + overtimePay + entry.bonus;
-  const csgBase = gross * 0.9825;
+  const mutuelleEmployer = rates
+    .filter((rate) => rate.id === "mutuelle" || rate.label.toLowerCase().includes("complémentaire santé"))
+    .reduce((sum, rate) => sum + gross * rate.employerRate, 0);
+  const csgBase = gross * 0.9825 + mutuelleEmployer;
   const employeeCharges = rates.reduce((sum, rate) => {
-    const base = rate.base === "csg" ? csgBase : gross;
+    const base = rate.base === "csg" ? csgBase : rate.base === "mutuelle" ? mutuelleEmployer : gross;
     return sum + base * rate.employeeRate;
   }, 0);
-  return { gross, net: gross - employeeCharges - advance, employerCost: gross + rates.reduce((sum, rate) => sum + (rate.base === "csg" ? csgBase : gross) * rate.employerRate, 0) };
+  const employerCharges = rates.reduce((sum, rate) => {
+    const base = rate.base === "csg" ? csgBase : rate.base === "mutuelle" ? mutuelleEmployer : gross;
+    return sum + base * rate.employerRate;
+  }, 0);
+  return { gross, net: gross - employeeCharges - advance, employerCost: gross + employerCharges };
 }
 
 export function PeriodDetailPage() {
