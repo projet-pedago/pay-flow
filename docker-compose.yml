@@ -1,0 +1,29 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: payrollflow-api
+    environment:
+      PORT: "45218"
+    volumes:
+      - payroll-data:/app/data
+    ports:
+      - "45218:45218"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:45218/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: payrollflow-web
+    ports:
+      - "45217:80"
+    depends_on:
+      backend:
+        condition: service_started
+
+volumes:
+  payroll-data:
