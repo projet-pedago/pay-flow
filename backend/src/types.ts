@@ -59,6 +59,7 @@ export type Payslip = {
   employerCharges: number;
   net: number;
   employerCost: number;
+  advance: number;
   lines: PayslipLine[];
 };
 
@@ -93,6 +94,54 @@ export type AuthUser = {
   employeeId?: string;
 };
 
+export type LeaveType = "cp" | "rtt" | "maladie" | "sans_solde";
+export type RequestStatus = "pending" | "approved" | "rejected" | "settled";
+export type DocumentKey = "cni" | "rib" | "contrat" | "vitale";
+
+export type LeaveRequest = {
+  id: string;
+  employeeId: string;
+  type: LeaveType;
+  startDate: string;
+  endDate: string;
+  days: number;
+  reason: string;
+  status: RequestStatus;
+  createdAt: string;
+  decidedAt?: string;
+};
+
+export type SalaryAdvance = {
+  id: string;
+  employeeId: string;
+  amount: number;
+  year: number;
+  month: number;
+  reason: string;
+  status: RequestStatus;
+  createdAt: string;
+  decidedAt?: string;
+};
+
+export type HrDocument = {
+  id: string;
+  employeeId: string;
+  key: DocumentKey;
+  label: string;
+  status: "provided" | "missing";
+  updatedAt: string;
+};
+
+export type AppNotification = {
+  id: string;
+  userId: string;
+  title: string;
+  body: string;
+  link: string;
+  read: boolean;
+  createdAt: string;
+};
+
 export type Store = {
   settings: Settings;
   departments: Department[];
@@ -101,4 +150,8 @@ export type Store = {
   periods: PayrollPeriod[];
   payslips: Payslip[];
   users: AuthUser[];
+  leaves: LeaveRequest[];
+  advances: SalaryAdvance[];
+  documents: HrDocument[];
+  notifications: AppNotification[];
 };

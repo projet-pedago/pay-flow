@@ -1,6 +1,7 @@
-import { FileText, Home, LogOut, Menu, UserRound, X } from "lucide-react";
+import { Banknote, CalendarDays, FileText, FolderOpen, Home, LogOut, Menu, UserRound, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
+import { NotificationBell } from "@/components/notification-bell";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -8,7 +9,10 @@ import { cn } from "@/lib/utils";
 const links = [
   { to: "/espace", label: "Accueil", icon: Home },
   { to: "/espace/bulletins", label: "Mes bulletins", icon: FileText },
-  { to: "/espace/profil", label: "Mon profil", icon: UserRound },
+  { to: "/espace/conges", label: "Congés", icon: CalendarDays },
+  { to: "/espace/acomptes", label: "Acomptes", icon: Banknote },
+  { to: "/espace/dossier", label: "Dossier", icon: FolderOpen },
+  { to: "/espace/profil", label: "Profil", icon: UserRound },
 ];
 
 export function EmployeeLayout({ children }: { children: ReactNode }) {
@@ -23,7 +27,7 @@ export function EmployeeLayout({ children }: { children: ReactNode }) {
             <p className="text-[10px] font-semibold tracking-[0.22em] text-[#3d7ea6] uppercase">Espace collaborateur</p>
             <p className="font-display text-xl">PayRollFlow</p>
           </div>
-          <div className="hidden items-center gap-6 md:flex">
+          <div className="hidden items-center gap-5 md:flex">
             {links.map((link) => {
               const Icon = link.icon;
               return (
@@ -40,6 +44,7 @@ export function EmployeeLayout({ children }: { children: ReactNode }) {
                 </NavLink>
               );
             })}
+            <NotificationBell variant="employee" />
             <Button variant="outline" size="sm" onClick={logout}>
               <LogOut className="h-4 w-4" />
               Sortir

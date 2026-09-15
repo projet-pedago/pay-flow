@@ -56,14 +56,27 @@ export function DashboardPage() {
         ) : null}
       </div>
 
-      {data.alerts.length > 0 ? (
-        <div className="grid gap-3 md:grid-cols-2">
-          {data.alerts.map((alert) => (
-            <div key={alert} className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-              {alert}
+      {data.anomalies && data.anomalies.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <div>
+              <h3 className="font-display text-xl">Centre de conformité</h3>
+              <p className="text-sm text-ink/50">Les points que les leaders du marché (PayFit, ADP, Sage) traitent avant un virement.</p>
             </div>
-          ))}
-        </div>
+          </CardHeader>
+          <CardContent className="grid gap-2">
+            {data.anomalies.map((item) => (
+              <Link
+                key={item.title}
+                to={item.link}
+                className="rounded-2xl border border-ink/8 px-4 py-3 hover:bg-paper"
+              >
+                <p className="text-sm font-semibold">{item.title}</p>
+                <p className="text-xs text-ink/55">{item.detail}</p>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
 import { getUser, requireAuth } from "../auth.js";
+import { leaveDaysInMonth } from "../lib/dates.js";
+import { notifyEmployee } from "../lib/notify.js";
 import { calculatePayslip } from "../lib/payroll.js";
 import { id, loadStore, mutate } from "../lib/store.js";
 
@@ -62,7 +64,30 @@ payrollRouter.get("/periods/:id", (req, res) => {
     return;
   }
   const slips = store.payslips.filter((item) => item.periodId === period.id);
-  res.json({ period, payslips: slips });
+  const suggestions = store.employees
+    .filter((employee) => employee.status !== "terminated")
+    .map((employee) => {
+      const leaveDays = store.leaves
+        .filter((item) => item.employeeId === employee.id && item.status === "approved")
+        .reduce((sum, item) => sum + leaveDaysInMonth(item.startDate, item.endDate, period.year, period.month), 0);
+      const advance = store.advances
+        .filter(
+          (item) =>
+            item.employeeId === employee.id &&
+            item.status === "approved" &&
+            item.year === period.year &&
+            item.month === period.month,
+        )
+        .reduce((sum, item) => sum + item.amount, 0);
+      return {
+        employeeId: employee.id,
+        leaveDays,
+        suggestedWorkedDays: Math.max(store.settings.workingDays - leaveDays, 0),
+        advance,
+        leaveLabel: leaveDays ? `${leaveDays} j d'absence` : null,
+      };
+    });
+  res.json({ period, payslips: slips, suggestions });
 });
 
 const entriesSchema = z.object({
@@ -92,17 +117,33 @@ payrollRouter.post("/periods/:id/calculate", (req, res) => {
       .map((entry) => {
         const employee = store.employees.find((item) => item.id === entry.employeeId);
         if (!employee || employee.status === "terminated") return null;
-        return calculatePayslip({
+        const advance = store.advances
+          .filter(
+            (item) =>
+              item.employeeId === employee.id &&
+              item.status === "approved" &&
+              item.year === period.year &&
+              item.month === period.month,
+          )
+          .reduce((sum, item) => sum + item.amount, 0);
+        const slip = calculatePayslip({
           employee,
           periodId: period.id,
           workedDays: entry.workedDays,
           overtimeHours: entry.overtimeHours,
           bonus: entry.bonus,
+          advance,
           workingDays: store.settings.workingDays,
           monthlyHours: store.settings.monthlyHours,
           overtimeRate: store.settings.overtimeRate,
           rates: store.rates,
         });
+        notifyEmployee(store, employee.id, {
+          title: "Bulletin disponible",
+          body: `Votre paie ${String(period.month).padStart(2, "0")}/${period.year} a été calculée.`,
+          link: `/espace/bulletins/${slip.id}`,
+        });
+        return slip;
       })
       .filter((item) => item !== null);
 
@@ -142,6 +183,11 @@ payrollRouter.post("/periods/:id/pay", (req, res) => {
     if (period.status !== "validated") return { error: "Validez d'abord la paie", status: 409 as const };
     period.status = "paid";
     period.paidAt = new Date().toISOString();
+    store.advances.forEach((item) => {
+      if (item.status === "approved" && item.year === period.year && item.month === period.month) {
+        item.status = "settled";
+      }
+    });
     return { period };
   });
   if (isActionError(result)) {
@@ -149,6 +195,35 @@ payrollRouter.post("/periods/:id/pay", (req, res) => {
     return;
   }
   res.json(result.period);
+});
+
+payrollRouter.get("/periods/:id/export", (req, res) => {
+  const store = loadStore();
+  const period = store.periods.find((item) => item.id === req.params.id);
+  if (!period) {
+    res.status(404).json({ error: "Période introuvable" });
+    return;
+  }
+  if (period.status === "draft") {
+    res.status(409).json({ error: "Calculez la paie avant l'export bancaire" });
+    return;
+  }
+  const slips = store.payslips.filter((item) => item.periodId === period.id);
+  const rows = slips.map((slip) => {
+    const employee = store.employees.find((item) => item.id === slip.employeeId);
+    return {
+      name: employee ? `${employee.lastName} ${employee.firstName}` : slip.employeeId,
+      iban: employee?.iban ?? "",
+      amount: slip.net,
+      reference: `PAIE-${period.year}${String(period.month).padStart(2, "0")}-${employee?.lastName ?? ""}`.toUpperCase(),
+    };
+  });
+  res.json({
+    filename: `virement-paie-${period.year}-${String(period.month).padStart(2, "0")}.csv`,
+    period,
+    total: rows.reduce((sum, row) => sum + row.amount, 0),
+    rows,
+  });
 });
 
 payrollRouter.get("/employee/:employeeId/payslips", (req, res) => {

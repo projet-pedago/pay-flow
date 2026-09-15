@@ -11,6 +11,7 @@ export function calculatePayslip(input: {
   workedDays: number;
   overtimeHours: number;
   bonus: number;
+  advance?: number;
   workingDays: number;
   monthlyHours: number;
   overtimeRate: number;
@@ -18,6 +19,7 @@ export function calculatePayslip(input: {
 }): Payslip {
   const { employee, periodId, workedDays, overtimeHours, bonus, workingDays, monthlyHours, overtimeRate, rates } =
     input;
+  const advance = round(input.advance ?? 0);
 
   const ratio = Math.min(Math.max(workedDays / workingDays, 0), 1);
   const proratedBase = round(employee.baseSalary * ratio);
@@ -41,7 +43,7 @@ export function calculatePayslip(input: {
 
   const employeeCharges = round(lines.reduce((sum, line) => sum + line.employeeAmount, 0));
   const employerCharges = round(lines.reduce((sum, line) => sum + line.employerAmount, 0));
-  const net = round(gross - employeeCharges);
+  const net = round(gross - employeeCharges - advance);
   const employerCost = round(gross + employerCharges);
 
   return {
@@ -59,6 +61,7 @@ export function calculatePayslip(input: {
     employerCharges,
     net,
     employerCost,
+    advance,
     lines,
   };
 }

@@ -21,10 +21,28 @@ export function loadStore(): Store {
     return seeded;
   }
   const store = JSON.parse(readFileSync(storePath, "utf8")) as Store;
+  let dirty = false;
   if (!store.users?.length) {
     store.users = buildUsers(store.employees);
-    writeStore(store);
+    dirty = true;
   }
+  if (!Array.isArray(store.leaves)) {
+    store.leaves = [];
+    dirty = true;
+  }
+  if (!Array.isArray(store.advances)) {
+    store.advances = [];
+    dirty = true;
+  }
+  if (!Array.isArray(store.documents)) {
+    store.documents = [];
+    dirty = true;
+  }
+  if (!Array.isArray(store.notifications)) {
+    store.notifications = [];
+    dirty = true;
+  }
+  if (dirty) writeStore(store);
   return store;
 }
 

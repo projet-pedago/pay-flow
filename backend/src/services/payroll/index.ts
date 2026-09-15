@@ -1,5 +1,6 @@
 import { requireAuth } from "../../auth.js";
 import { createService } from "../../http.js";
+import { advancesRouter } from "../../routes/advances.js";
 import { dashboardRouter } from "../../routes/dashboard.js";
 import { mePayrollRouter } from "../../routes/me-payroll.js";
 import { payrollRouter } from "../../routes/payroll.js";
@@ -11,5 +12,6 @@ createService("payrollflow-payroll", port, (app) => {
   app.use("/api/payroll", payrollRouter);
   app.use("/api/dashboard", dashboardRouter);
   app.use("/api/settings", settingsRouter);
+  app.use("/api/advances", advancesRouter);
   app.use("/api/me", requireAuth, mePayrollRouter);
 });

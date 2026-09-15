@@ -28,6 +28,66 @@ employeesRouter.get("/", (_req, res) => {
   res.json(employees);
 });
 
+employeesRouter.post("/import", (req, res) => {
+  const parsed = z.object({ csv: z.string().min(10) }).safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Fichier CSV manquant" });
+    return;
+  }
+  const lines = parsed.data.csv.trim().split(/\r?\n/);
+  const header = lines.shift()?.split(",").map((item) => item.trim()) ?? [];
+  const required = ["firstName", "lastName", "email", "departmentCode", "jobTitle", "baseSalary"];
+  if (required.some((key) => !header.includes(key))) {
+    res.status(400).json({
+      error: "En-têtes attendus : firstName,lastName,email,phone,departmentCode,jobTitle,contractType,hireDate,baseSalary,iban,city,country",
+    });
+    return;
+  }
+  const created = mutate((store) => {
+    const added = [];
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const cols = line.split(",").map((item) => item.trim());
+      const row = Object.fromEntries(header.map((key, index) => [key, cols[index] ?? ""]));
+      const department = store.departments.find((item) => item.code === row.departmentCode || item.id === row.departmentCode);
+      if (!department || store.employees.some((item) => item.email === row.email)) continue;
+      const employee = {
+        id: id(),
+        firstName: row.firstName,
+        lastName: row.lastName,
+        email: row.email,
+        phone: row.phone || "n/c",
+        departmentId: department.id,
+        jobTitle: row.jobTitle,
+        contractType: (["CDI", "CDD", "Stage", "Alternance"].includes(row.contractType) ? row.contractType : "CDI") as
+          | "CDI"
+          | "CDD"
+          | "Stage"
+          | "Alternance",
+        hireDate: row.hireDate || new Date().toISOString().slice(0, 10),
+        baseSalary: Number(row.baseSalary) || 0,
+        status: "active" as const,
+        iban: row.iban || "FR76 A COMPLETER",
+        city: row.city || store.settings.companyCity,
+        country: row.country || "France",
+      };
+      if (!employee.baseSalary) continue;
+      store.employees.push(employee);
+      store.users.push({
+        id: id(),
+        email: employee.email,
+        passwordHash: hashPassword(DEMO_EMPLOYEE_PASSWORD),
+        role: "employee",
+        name: `${employee.firstName} ${employee.lastName}`,
+        employeeId: employee.id,
+      });
+      added.push(employee);
+    }
+    return added;
+  });
+  res.status(201).json({ imported: created.length, employees: created });
+});
+
 employeesRouter.get("/:id", (req, res) => {
   const employee = loadStore().employees.find((item) => item.id === req.params.id);
   if (!employee) {

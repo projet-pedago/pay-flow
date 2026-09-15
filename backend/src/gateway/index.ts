@@ -5,6 +5,7 @@ const port = Number(process.env.PORT ?? 45218);
 const AUTH_URL = process.env.AUTH_URL ?? "http://127.0.0.1:45231";
 const HR_URL = process.env.HR_URL ?? "http://127.0.0.1:45232";
 const PAYROLL_URL = process.env.PAYROLL_URL ?? "http://127.0.0.1:45233";
+const TIME_URL = process.env.TIME_URL ?? "http://127.0.0.1:45234";
 
 function proxyTo(baseUrl: string): RequestHandler {
   return async (req, res) => {
@@ -43,6 +44,7 @@ app.get("/api/health", async (_req, res) => {
       ["auth", AUTH_URL],
       ["hr", HR_URL],
       ["payroll", PAYROLL_URL],
+      ["time", TIME_URL],
     ].map(async ([name, url]) => {
       try {
         const response = await fetch(`${url}/api/health`);
@@ -65,6 +67,10 @@ app.use("/api/me/summary", proxyTo(PAYROLL_URL));
 app.use("/api/payroll", proxyTo(PAYROLL_URL));
 app.use("/api/dashboard", proxyTo(PAYROLL_URL));
 app.use("/api/settings", proxyTo(PAYROLL_URL));
+app.use("/api/advances", proxyTo(PAYROLL_URL));
+app.use("/api/leaves", proxyTo(TIME_URL));
+app.use("/api/documents", proxyTo(TIME_URL));
+app.use("/api/notifications", proxyTo(TIME_URL));
 
 app.use("/api", (_req, res) => {
   res.status(404).json({ error: "Route introuvable" });

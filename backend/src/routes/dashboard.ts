@@ -66,5 +66,46 @@ dashboardRouter.get("/", (_req, res) => {
         ? `${store.employees.filter((item) => item.status === "on_leave").length} personne(s) en congé ce mois-ci.`
         : null,
     ].filter(Boolean),
+    anomalies: [
+      ...store.employees
+        .filter((item) => item.status !== "terminated" && item.iban.replace(/\s/g, "").length < 15)
+        .map((item) => ({
+          severity: "high" as const,
+          title: `IBAN incomplet · ${item.firstName} ${item.lastName}`,
+          detail: "Le virement SEPA sera rejeté.",
+          link: `/admin/employes/${item.id}`,
+        })),
+      ...store.leaves
+        .filter((item) => item.status === "pending")
+        .map((item) => {
+          const employee = store.employees.find((entry) => entry.id === item.employeeId);
+          return {
+            severity: "medium" as const,
+            title: `Absence à valider · ${employee?.firstName ?? ""} ${employee?.lastName ?? ""}`,
+            detail: `${item.days} jour(s) du ${item.startDate} au ${item.endDate}`,
+            link: "/admin/conges",
+          };
+        }),
+      ...store.advances
+        .filter((item) => item.status === "pending")
+        .map((item) => {
+          const employee = store.employees.find((entry) => entry.id === item.employeeId);
+          return {
+            severity: "medium" as const,
+            title: `Acompte à valider · ${employee?.firstName ?? ""} ${employee?.lastName ?? ""}`,
+            detail: `${item.amount} €`,
+            link: "/admin/acomptes",
+          };
+        }),
+      ...store.employees
+        .filter((employee) => employee.status !== "terminated")
+        .filter((employee) => store.documents.some((doc) => doc.employeeId === employee.id && doc.status === "missing"))
+        .map((employee) => ({
+          severity: "low" as const,
+          title: `Dossier RH incomplet · ${employee.firstName} ${employee.lastName}`,
+          detail: "Pièces manquantes (CNI, RIB, contrat ou Vitale).",
+          link: "/admin/dossiers",
+        })),
+    ],
   });
 });

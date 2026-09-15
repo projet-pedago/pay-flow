@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { money, moneyExact, monthLabel } from "@/lib/format";
-import type { ContributionRate, Employee, PayrollPeriod, Payslip, Settings } from "@/lib/types";
+import type { ContributionRate, Employee, PayrollPeriod, Payslip, PeriodSuggestion, Settings } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
 
 type Entry = {
@@ -18,7 +18,13 @@ type Entry = {
   bonus: number;
 };
 
-function preview(employee: Employee, entry: Entry, settings: Settings, rates: ContributionRate[]) {
+function preview(
+  employee: Employee,
+  entry: Entry,
+  settings: Settings,
+  rates: ContributionRate[],
+  advance = 0,
+) {
   const ratio = Math.min(Math.max(entry.workedDays / settings.workingDays, 0), 1);
   const proratedBase = employee.baseSalary * ratio;
   const overtimePay = entry.overtimeHours * (employee.baseSalary / settings.monthlyHours) * settings.overtimeRate;
@@ -28,12 +34,14 @@ function preview(employee: Employee, entry: Entry, settings: Settings, rates: Co
     const base = rate.base === "csg" ? csgBase : gross;
     return sum + base * rate.employeeRate;
   }, 0);
-  return { gross, net: gross - employeeCharges, employerCost: gross + rates.reduce((sum, rate) => sum + (rate.base === "csg" ? csgBase : gross) * rate.employerRate, 0) };
+  return { gross, net: gross - employeeCharges - advance, employerCost: gross + rates.reduce((sum, rate) => sum + (rate.base === "csg" ? csgBase : gross) * rate.employerRate, 0) };
 }
 
 export function PeriodDetailPage() {
   const { id } = useParams();
-  const payload = useApi<{ period: PayrollPeriod; payslips: Payslip[] }>(id ? `/api/payroll/periods/${id}` : null);
+  const payload = useApi<{ period: PayrollPeriod; payslips: Payslip[]; suggestions: PeriodSuggestion[] }>(
+    id ? `/api/payroll/periods/${id}` : null,
+  );
   const employeesQuery = useApi<Employee[]>("/api/employees");
   const settingsQuery = useApi<{ settings: Settings; rates: ContributionRate[] }>("/api/settings");
   const [entries, setEntries] = useState<Entry[] | null>(null);
@@ -42,12 +50,13 @@ export function PeriodDetailPage() {
   useEffect(() => {
     if (!payload.data || !employeesQuery.data) return;
     const slips = Object.fromEntries(payload.data.payslips.map((item) => [item.employeeId, item]));
+    const suggestions = Object.fromEntries(payload.data.suggestions.map((item) => [item.employeeId, item]));
     setEntries(
       employeesQuery.data
         .filter((employee) => employee.status !== "terminated")
         .map((employee) => ({
           employeeId: employee.id,
-          workedDays: slips[employee.id]?.workedDays ?? 22,
+          workedDays: slips[employee.id]?.workedDays ?? suggestions[employee.id]?.suggestedWorkedDays ?? 22,
           overtimeHours: slips[employee.id]?.overtimeHours ?? 0,
           bonus: slips[employee.id]?.bonus ?? 0,
         })),
@@ -66,7 +75,7 @@ export function PeriodDetailPage() {
       (acc, entry) => {
         const employee = employeeMap[entry.employeeId];
         if (!employee) return acc;
-        const next = preview(employee, entry, settings, rates);
+        const next = preview(employee, entry, settings, rates, payload.data?.suggestions.find((item) => item.employeeId === entry.employeeId)?.advance ?? 0);
         acc.gross += next.gross;
         acc.net += next.net;
         acc.employerCost += next.employerCost;
@@ -131,6 +140,26 @@ export function PeriodDetailPage() {
           <Button variant="dark" disabled={period.status !== "validated" || busy !== null} onClick={() => void run("pay")}>
             Marquer payé
           </Button>
+          <Button
+            variant="outline"
+            disabled={period.status === "draft"}
+            onClick={async () => {
+              if (!id) return;
+              const file = await api<{ filename: string; rows: { name: string; iban: string; amount: number; reference: string }[] }>(
+                `/api/payroll/periods/${id}/export`,
+              );
+              const csv = ["Nom;IBAN;Montant;Référence", ...file.rows.map((row) => `${row.name};${row.iban};${row.amount};${row.reference}`)].join("\n");
+              const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+              const url = URL.createObjectURL(blob);
+              const anchor = document.createElement("a");
+              anchor.href = url;
+              anchor.download = file.filename;
+              anchor.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            Export virement
+          </Button>
         </div>
       </div>
 
@@ -166,7 +195,8 @@ export function PeriodDetailPage() {
             {(entries ?? []).map((entry) => {
               const employee = employeeMap[entry.employeeId];
               if (!employee || !settings) return null;
-              const estimate = preview(employee, entry, settings, rates);
+              const suggestion = payload.data?.suggestions.find((item) => item.employeeId === employee.id);
+              const estimate = preview(employee, entry, settings, rates, suggestion?.advance ?? 0);
               const existing = payload.data?.payslips.find((item) => item.employeeId === employee.id);
               return (
                 <tr key={entry.employeeId} className="border-b border-ink/6 last:border-0">
@@ -174,7 +204,11 @@ export function PeriodDetailPage() {
                     <p className="font-medium">
                       {employee.firstName} {employee.lastName}
                     </p>
-                    <p className="text-xs text-ink/45">{employee.jobTitle}</p>
+                    <p className="text-xs text-ink/45">
+                      {employee.jobTitle}
+                      {suggestion?.leaveLabel ? ` · ${suggestion.leaveLabel}` : ""}
+                      {suggestion?.advance ? ` · acompte ${money(suggestion.advance, currency)}` : ""}
+                    </p>
                   </td>
                   <td className="px-4 py-3">
                     <Input

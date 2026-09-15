@@ -41,6 +41,20 @@ services:
     expose:
       - "45233"
 
+  time:
+    build:
+      context: ./backend
+    container_name: payrollflow-time
+    environment:
+      PORT: "45234"
+      START: src/services/time/index.ts
+      JWT_SECRET: payrollflow-dev-secret
+      DATA_DIR: /app/data
+    volumes:
+      - payroll-data:/app/data
+    expose:
+      - "45234"
+
   gateway:
     build:
       context: ./backend
@@ -51,12 +65,14 @@ services:
       AUTH_URL: http://auth:45231
       HR_URL: http://hr:45232
       PAYROLL_URL: http://payroll:45233
+      TIME_URL: http://time:45234
     ports:
       - "45218:45218"
     depends_on:
       - auth
       - hr
       - payroll
+      - time
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:45218/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 15s

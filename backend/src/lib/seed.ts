@@ -278,7 +278,129 @@ export function createSeed(): Store {
     periods,
     payslips,
     users: buildUsers(employees),
+    leaves: buildLeaves(),
+    advances: buildAdvances(),
+    documents: buildDocuments(employees),
+    notifications: [
+      {
+        id: "not-001",
+        userId: "usr-admin",
+        title: "Demande de RTT à valider",
+        body: "Omar Benali a posé 3 jours du 18 au 22 septembre.",
+        link: "/admin/conges",
+        read: false,
+        createdAt: "2026-09-12T14:05:00.000Z",
+      },
+      {
+        id: "not-002",
+        userId: "usr-admin",
+        title: "Acompte en attente",
+        body: "Jean-Pierre Kouamé demande 800 € d'acompte.",
+        link: "/admin/acomptes",
+        read: false,
+        createdAt: "2026-09-14T11:05:00.000Z",
+      },
+      {
+        id: "not-003",
+        userId: "usr-001",
+        title: "Acompte accepté",
+        body: "Votre acompte de 500 € a été validé. Il sera déduit du bulletin de septembre.",
+        link: "/espace/acomptes",
+        read: false,
+        createdAt: "2026-09-05T16:05:00.000Z",
+      },
+    ],
   };
+}
+
+function buildLeaves() {
+  return [
+    {
+      id: "leave-001",
+      employeeId: uid("emp", 6),
+      type: "cp" as const,
+      startDate: "2026-09-01",
+      endDate: "2026-09-12",
+      days: 10,
+      reason: "Congés d'été reportés",
+      status: "approved" as const,
+      createdAt: "2026-08-20T09:00:00.000Z",
+      decidedAt: "2026-08-21T10:00:00.000Z",
+    },
+    {
+      id: "leave-002",
+      employeeId: uid("emp", 7),
+      type: "rtt" as const,
+      startDate: "2026-09-18",
+      endDate: "2026-09-22",
+      days: 3,
+      reason: "Pont personnel",
+      status: "pending" as const,
+      createdAt: "2026-09-12T14:00:00.000Z",
+    },
+    {
+      id: "leave-003",
+      employeeId: uid("emp", 3),
+      type: "cp" as const,
+      startDate: "2026-10-05",
+      endDate: "2026-10-09",
+      days: 5,
+      reason: "Semaine de congés",
+      status: "approved" as const,
+      createdAt: "2026-09-01T08:00:00.000Z",
+      decidedAt: "2026-09-02T09:00:00.000Z",
+    },
+  ];
+}
+
+function buildAdvances() {
+  return [
+    {
+      id: "adv-001",
+      employeeId: uid("emp", 1),
+      amount: 500,
+      year: 2026,
+      month: 9,
+      reason: "Frais de rentrée",
+      status: "approved" as const,
+      createdAt: "2026-09-05T10:00:00.000Z",
+      decidedAt: "2026-09-05T16:00:00.000Z",
+    },
+    {
+      id: "adv-002",
+      employeeId: uid("emp", 2),
+      amount: 800,
+      year: 2026,
+      month: 9,
+      reason: "Avance exceptionnelle",
+      status: "pending" as const,
+      createdAt: "2026-09-14T11:00:00.000Z",
+    },
+  ];
+}
+
+function buildDocuments(employees: Employee[]) {
+  const catalog = [
+    { key: "cni" as const, label: "Pièce d'identité" },
+    { key: "rib" as const, label: "RIB / IBAN" },
+    { key: "contrat" as const, label: "Contrat de travail" },
+    { key: "vitale" as const, label: "Carte Vitale / CNAM" },
+  ];
+  return employees.flatMap((employee) =>
+    catalog.map((doc) => {
+      const missing =
+        (employee.id === uid("emp", 12) && doc.key === "contrat") ||
+        (employee.id === uid("emp", 6) && doc.key === "vitale");
+      return {
+        id: `${employee.id}-${doc.key}`,
+        employeeId: employee.id,
+        key: doc.key,
+        label: doc.label,
+        status: missing ? ("missing" as const) : ("provided" as const),
+        updatedAt: "2026-09-01T08:00:00.000Z",
+      };
+    }),
+  );
 }
 
 export function buildUsers(employees: Employee[]): AuthUser[] {

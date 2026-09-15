@@ -131,6 +131,11 @@ export function PayslipPage() {
             </div>
           ))}
         </section>
+        {payslip.advance ? (
+          <p className="mt-4 text-sm text-ink/60">
+            Acompte déjà versé : {moneyExact(payslip.advance, currency)} (déduit du net).
+          </p>
+        ) : null}
       </article>
     </div>
   );

@@ -61,6 +61,7 @@ export type Payslip = {
   employerCharges: number;
   net: number;
   employerCost: number;
+  advance?: number;
   lines: PayslipLine[];
 };
 
@@ -113,4 +114,70 @@ export type DashboardData = {
     employerCost: number;
   }[];
   alerts: string[];
+  anomalies?: {
+    severity: "high" | "medium" | "low";
+    title: string;
+    detail: string;
+    link: string;
+  }[];
+};
+
+export type LeaveType = "cp" | "rtt" | "maladie" | "sans_solde";
+export type RequestStatus = "pending" | "approved" | "rejected" | "settled";
+
+export type LeaveRequest = {
+  id: string;
+  employeeId: string;
+  employeeName?: string;
+  type: LeaveType;
+  startDate: string;
+  endDate: string;
+  days: number;
+  reason: string;
+  status: RequestStatus;
+  createdAt: string;
+};
+
+export type LeaveBalance = {
+  employeeId: string;
+  name: string;
+  cp: { acquired: number; used: number; remaining: number };
+  rtt: { acquired: number; used: number; remaining: number };
+};
+
+export type SalaryAdvance = {
+  id: string;
+  employeeId: string;
+  employeeName?: string;
+  amount: number;
+  year: number;
+  month: number;
+  reason: string;
+  status: RequestStatus;
+  createdAt: string;
+};
+
+export type DocumentPack = {
+  employeeId: string;
+  name: string;
+  complete: boolean;
+  missing: number;
+  documents: { id: string; key: string; label: string; status: "provided" | "missing" }[];
+};
+
+export type AppNotification = {
+  id: string;
+  title: string;
+  body: string;
+  link: string;
+  read: boolean;
+  createdAt: string;
+};
+
+export type PeriodSuggestion = {
+  employeeId: string;
+  leaveDays: number;
+  suggestedWorkedDays: number;
+  advance: number;
+  leaveLabel: string | null;
 };

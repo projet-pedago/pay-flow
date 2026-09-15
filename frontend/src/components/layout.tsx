@@ -1,6 +1,7 @@
-import { Building2, LayoutDashboard, LogOut, Menu, Settings2, Users, Wallet, X } from "lucide-react";
+import { Banknote, Building2, CalendarDays, FolderOpen, LayoutDashboard, LogOut, Menu, Settings2, Users, Wallet, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
+import { NotificationBell } from "@/components/notification-bell";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -10,6 +11,9 @@ const links = [
   { to: "/admin/employes", label: "Employés", icon: Users },
   { to: "/admin/departements", label: "Départements", icon: Building2 },
   { to: "/admin/paie", label: "Cycles de paie", icon: Wallet },
+  { to: "/admin/conges", label: "Congés", icon: CalendarDays },
+  { to: "/admin/acomptes", label: "Acomptes", icon: Banknote },
+  { to: "/admin/dossiers", label: "Dossiers RH", icon: FolderOpen },
   { to: "/admin/parametres", label: "Paramètres", icon: Settings2 },
 ];
 
@@ -60,9 +64,12 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         </div>
         <NavItems />
         <div className="mt-auto space-y-3">
-          <div className="rounded-2xl bg-white/8 p-4 text-xs text-white/70">
-            <p className="font-semibold text-white">{user?.name}</p>
-            <p className="mt-1">{user?.email}</p>
+          <div className="flex items-center justify-between rounded-2xl bg-white/8 p-4 text-xs text-white/70">
+            <div>
+              <p className="font-semibold text-white">{user?.name}</p>
+              <p className="mt-1">{user?.email}</p>
+            </div>
+            <NotificationBell />
           </div>
           <Button variant="ghost" className="w-full justify-start text-white/80 hover:bg-white/10 hover:text-white" onClick={logout}>
             <LogOut className="h-4 w-4" />
@@ -77,9 +84,12 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             <p className="text-[10px] font-semibold tracking-[0.2em] text-sage uppercase">Admin</p>
             <p className="text-sm font-semibold">PayRollFlow</p>
           </div>
-          <Button variant="outline" size="icon" onClick={() => setOpen(true)} aria-label="Ouvrir le menu">
-            <Menu className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <NotificationBell />
+            <Button variant="outline" size="icon" onClick={() => setOpen(true)} aria-label="Ouvrir le menu">
+              <Menu className="h-4 w-4" />
+            </Button>
+          </div>
         </header>
 
         {open ? (

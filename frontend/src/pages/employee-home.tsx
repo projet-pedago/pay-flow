@@ -37,6 +37,18 @@ export function EmployeeHomePage() {
         </p>
       </div>
 
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Link to="/espace/conges" className="rounded-3xl border border-[#d5e0ea] bg-white px-4 py-3 text-sm">
+          Poser un congé
+        </Link>
+        <Link to="/espace/acomptes" className="rounded-3xl border border-[#d5e0ea] bg-white px-4 py-3 text-sm">
+          Demander un acompte
+        </Link>
+        <Link to="/espace/dossier" className="rounded-3xl border border-[#d5e0ea] bg-white px-4 py-3 text-sm">
+          Compléter mon dossier
+        </Link>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="rounded-3xl border-[#d5e0ea] shadow-none">
           <CardContent>

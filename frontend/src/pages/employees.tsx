@@ -41,6 +41,9 @@ export function EmployeesPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [csv, setCsv] = useState(
+    "firstName,lastName,email,phone,departmentCode,jobTitle,contractType,hireDate,baseSalary,iban,city,country\nNora,Sy,nora.sy@payrollflow.demo,+221 77 000 11 22,RH,Juriste sociale,CDI,2026-09-01,3300,FR76 ACCT-000044,Dakar,Sénégal",
+  );
 
   const filtered = useMemo(() => {
     const list = employees.data ?? [];
@@ -102,6 +105,35 @@ export function EmployeesPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <Card>
+        <CardContent className="space-y-3">
+          <p className="text-sm font-semibold">Import CSV (onboarding en masse)</p>
+          <textarea
+            className="h-24 w-full rounded-xl border border-ink/15 p-3 font-mono text-xs"
+            value={csv}
+            onChange={(e) => setCsv(e.target.value)}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              try {
+                const result = await api<{ imported: number }>("/api/employees/import", {
+                  method: "POST",
+                  body: JSON.stringify({ csv }),
+                });
+                toast.success(`${result.imported} collaborateur(s) importé(s)`);
+                await employees.reload();
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : "Import impossible");
+              }
+            }}
+          >
+            Importer le fichier
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="grid gap-3 md:grid-cols-4">

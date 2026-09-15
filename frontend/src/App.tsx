@@ -11,6 +11,9 @@ import { EmployeeHomePage } from "@/pages/employee-home";
 import { EmployeePayslipsPage } from "@/pages/employee-payslips";
 import { EmployeeProfilePage } from "@/pages/employee-profile";
 import { EmployeesPage } from "@/pages/employees";
+import { AdvancesPage } from "@/pages/advances";
+import { DocumentsPage } from "@/pages/documents";
+import { LeavesPage } from "@/pages/leaves";
 import { LoginPage } from "@/pages/login";
 import { PayrollPage } from "@/pages/payroll";
 import { PayslipPage } from "@/pages/payslip";
@@ -55,10 +58,16 @@ export default function App() {
           <Route path="/admin/paie" element={<AdminShell><PayrollPage /></AdminShell>} />
           <Route path="/admin/paie/:id" element={<AdminShell><PeriodDetailPage /></AdminShell>} />
           <Route path="/admin/bulletins/:id" element={<AdminShell><PayslipPage /></AdminShell>} />
+          <Route path="/admin/conges" element={<AdminShell><LeavesPage /></AdminShell>} />
+          <Route path="/admin/acomptes" element={<AdminShell><AdvancesPage /></AdminShell>} />
+          <Route path="/admin/dossiers" element={<AdminShell><DocumentsPage /></AdminShell>} />
           <Route path="/admin/parametres" element={<AdminShell><SettingsPage /></AdminShell>} />
           <Route path="/espace" element={<EmployeeShell><EmployeeHomePage /></EmployeeShell>} />
           <Route path="/espace/bulletins" element={<EmployeeShell><EmployeePayslipsPage /></EmployeeShell>} />
           <Route path="/espace/bulletins/:id" element={<EmployeeShell><PayslipPage /></EmployeeShell>} />
+          <Route path="/espace/conges" element={<EmployeeShell><LeavesPage /></EmployeeShell>} />
+          <Route path="/espace/acomptes" element={<EmployeeShell><AdvancesPage /></EmployeeShell>} />
+          <Route path="/espace/dossier" element={<EmployeeShell><DocumentsPage /></EmployeeShell>} />
           <Route path="/espace/profil" element={<EmployeeShell><EmployeeProfilePage /></EmployeeShell>} />
           <Route path="*" element={<HomeRedirect />} />
         </Routes>

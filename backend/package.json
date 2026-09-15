@@ -4,14 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k -n auth,hr,paie,gw -c teal,blue,magenta,yellow \"npm run dev:auth\" \"npm run dev:hr\" \"npm run dev:payroll\" \"npm run dev:gateway\"",
+    "dev": "concurrently -k -n auth,hr,paie,temps,gw -c teal,blue,magenta,green,yellow \"npm run dev:auth\" \"npm run dev:hr\" \"npm run dev:payroll\" \"npm run dev:time\" \"npm run dev:gateway\"",
     "dev:auth": "tsx watch src/services/auth/index.ts",
     "dev:hr": "tsx watch src/services/hr/index.ts",
     "dev:payroll": "tsx watch src/services/payroll/index.ts",
+    "dev:time": "tsx watch src/services/time/index.ts",
     "dev:gateway": "tsx watch src/gateway/index.ts",
     "start:auth": "tsx src/services/auth/index.ts",
     "start:hr": "tsx src/services/hr/index.ts",
     "start:payroll": "tsx src/services/payroll/index.ts",
+    "start:time": "tsx src/services/time/index.ts",
     "start:gateway": "tsx src/gateway/index.ts",
     "build": "tsc --noEmit"
   },
