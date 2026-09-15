@@ -16,7 +16,12 @@ mePayrollRouter.get("/payslips", (req, res) => {
     .map((payslip) => ({
       payslip,
       period: store.periods.find((item) => item.id === payslip.periodId),
-    }));
+    }))
+    .sort((a, b) => {
+      const ay = a.period?.year ?? 0;
+      const by = b.period?.year ?? 0;
+      return by - ay || (b.period?.month ?? 0) - (a.period?.month ?? 0);
+    });
   res.json(slips);
 });
 

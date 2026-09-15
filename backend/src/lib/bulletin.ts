@@ -39,11 +39,10 @@ export function leaveBalance(leaves: LeaveRequest[], employeeId: string, year: n
   const taken = mine
     .filter((item) => new Date(item.startDate).getFullYear() === year)
     .reduce((sum, item) => sum + item.days, 0);
-  const acquired = 25;
   return {
     taken,
-    acquired,
-    remaining: Math.max(acquired - taken, 0),
+    acquired: 0,
+    remaining: 0,
   };
 }
 
