@@ -42,6 +42,7 @@ const emptyForm = {
   pasRate: 0,
   mealTicket5: 0,
   mealTicket1650: 0,
+  contractEndDate: "",
 };
 
 export function EmployeesPage() {
@@ -103,7 +104,21 @@ export function EmployeesPage() {
             {filtered.length} profil{filtered.length > 1 ? "s" : ""} · recherche et filtres appliqués instantanément.
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            onClick={async () => {
+              const file = await api<{ filename: string; csv: string }>("/api/employees/export");
+              const blob = new Blob([file.csv], { type: "text/csv;charset=utf-8" });
+              const link = document.createElement("a");
+              link.href = URL.createObjectURL(blob);
+              link.download = file.filename;
+              link.click();
+            }}
+          >
+            Export Excel (CSV)
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => setForm({ ...emptyForm, departmentId: departments.data?.[0]?.id ?? "" })}>
               <Plus className="h-4 w-4" />
@@ -114,12 +129,13 @@ export function EmployeesPage() {
             <EmployeeForm
               form={form}
               departments={departments.data ?? []}
-              onChange={setForm}
+              onChange={(value) => setForm({ ...emptyForm, ...value, contractEndDate: value.contractEndDate ?? "" })}
               onSubmit={createEmployee}
               saving={saving}
             />
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       <Card>
@@ -231,6 +247,9 @@ export function EmployeesPage() {
               <p className="text-sm">{employee.jobTitle}</p>
               <div className="flex items-center gap-2">
                 <span className="text-sm">{employee.contractType}</span>
+                {employee.contractEndDate ? (
+                  <span className="text-[11px] text-ink/45">fin {employee.contractEndDate}</span>
+                ) : null}
                 <EmployeeBadge status={employee.status} />
               </div>
               <p className="font-medium">{money(employee.baseSalary, currency)}</p>
@@ -310,6 +329,9 @@ export function EmployeeForm({
       </Field>
       <Field label="Date d'entrée">
         <Input type="date" value={form.hireDate} onChange={(e) => set("hireDate", e.target.value)} required />
+      </Field>
+      <Field label="Fin de contrat">
+        <Input type="date" value={form.contractEndDate ?? ""} onChange={(e) => set("contractEndDate", e.target.value)} />
       </Field>
       <Field label="Salaire brut mensuel">
         <Input type="number" min={1} value={form.baseSalary} onChange={(e) => set("baseSalary", Number(e.target.value))} required />

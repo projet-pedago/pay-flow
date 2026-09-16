@@ -1,7 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
 import { getUser, requireAuth } from "../auth.js";
+import { pushAudit } from "../lib/audit.js";
 import { bulletinMeta } from "../lib/bulletin.js";
+import { buildCalcSteps } from "../lib/calc-steps.js";
 import { leaveDaysInMonth } from "../lib/dates.js";
 import { notifyEmployee } from "../lib/notify.js";
 import { calculatePayslip } from "../lib/payroll.js";
@@ -34,6 +36,7 @@ payrollRouter.post("/preview", (req, res) => {
       overtimeHours: z.number().min(0).max(80),
       bonus: z.number().min(0),
       advance: z.number().min(0).optional(),
+      raisePercent: z.number().min(0).max(80).optional(),
     })
     .safeParse(req.body);
   if (!parsed.success) {
@@ -46,140 +49,52 @@ payrollRouter.post("/preview", (req, res) => {
     res.status(404).json({ error: "Employé introuvable" });
     return;
   }
-  const payslip = calculatePayslip({
-    employee,
-    periodId: "preview",
+  const raisePercent = parsed.data.raisePercent ?? 0;
+  const scenarioEmployee = {
+    ...employee,
+    baseSalary: Math.round(employee.baseSalary * (1 + raisePercent / 100) * 100) / 100,
+  };
+  const common = {
+    periodId: "preview" as const,
     workedDays: parsed.data.workedDays,
     overtimeHours: parsed.data.overtimeHours,
-    bonus: parsed.data.bonus,
-    advance: parsed.data.advance ?? 0,
     workingDays: store.settings.workingDays,
     monthlyHours: store.settings.monthlyHours,
     overtimeRate: store.settings.overtimeRate,
     smicHourly: store.settings.smicHourly,
     fillonT: store.settings.fillonT,
     rates: store.rates,
-  });
-  const ratio = Math.min(Math.max(parsed.data.workedDays / store.settings.workingDays, 0), 1);
-  const steps = [
-    {
-      id: "base",
-      title: "Salaire de base",
-      formula: "Salaire brut contractuel du mois",
-      value: payslip.baseSalary,
-      hint: "Montant figé sur la fiche RH, avant prorata.",
-    },
-    {
-      id: "hourly",
-      title: "Taux horaire",
-      formula: "Salaire de base ÷ horaire mensuel du contrat",
-      value: payslip.hourlyRate,
-      hint: `${employee.contractHours} h / mois sur cette fiche.`,
-    },
-    {
-      id: "hours",
-      title: "Heures payées",
-      formula: "Horaire contrat × (jours travaillés ÷ jours ouvrés)",
-      value: payslip.hours,
-      hint: `${parsed.data.workedDays} j / ${store.settings.workingDays} j = ${(ratio * 100).toFixed(1)} %.`,
-    },
-    {
-      id: "prorata",
-      title: "Salaire proratisé",
-      formula: "Taux horaire × heures payées",
-      value: payslip.proratedBase,
-      hint: "C’est la ligne « Salaire horaire » du bulletin.",
-    },
-    {
-      id: "ot",
-      title: "Heures supplémentaires",
-      formula: "Heures sup × taux horaire × majoration",
-      value: payslip.overtimePay,
-      hint: `Majoration ${store.settings.overtimeRate} (Paramètres).`,
-    },
-    {
-      id: "bonus",
-      title: "Prime",
-      formula: "Montant saisi sur le cycle",
-      value: payslip.bonus,
-      hint: "Ajoutée au brut, soumise à cotisations.",
-    },
-    {
-      id: "gross",
-      title: "Total brut",
-      formula: "Prorata + heures sup + prime",
-      value: payslip.gross,
-      hint: "Base des cotisations « brut ».",
-    },
-    {
-      id: "csg",
-      title: "Base CSG / CRDS",
-      formula: "Brut × 98,25 % + part employeur mutuelle",
-      value: payslip.lines.find((item) => item.label.startsWith("CSG non"))?.base ?? 0,
-      hint: "Abattement 1,75 % pour frais professionnels.",
-    },
-    {
-      id: "employee",
-      title: "Cotisations salariales",
-      formula: "Somme des retenues (santé, retraite, CSG…)",
-      value: payslip.employeeCharges,
-      hint: "Le barème se règle dans Paramètres.",
-    },
-    {
-      id: "fillon",
-      title: "Allègement Fillon (employeur)",
-      formula: "Réduction générale jusqu’à 1,6 SMIC",
-      value: payslip.employerRelief,
-      hint: "Diminue uniquement la part employeur, pas le net.",
-    },
-    {
-      id: "tickets",
-      title: "Indemnités repas",
-      formula: "Tickets 5 € et 16,50 € × quantités fiche",
-      value: payslip.indemnities.reduce((sum, item) => sum + item.gain, 0),
-      hint: "Ajoutées après le net salarial, hors cotisations.",
-    },
-    {
-      id: "advance",
-      title: "Acompte déjà versé",
-      formula: "Acomptes validés du mois",
-      value: payslip.advance,
-      hint: "Déduit du net à payer.",
-    },
-    {
-      id: "imposable",
-      title: "Net imposable",
-      formula: "(Brut − cotis. salariales) + CSG/CRDS imposable",
-      value: payslip.netImposable,
-      hint: "Base du prélèvement à la source.",
-    },
-    {
-      id: "pas",
-      title: "Prélèvement à la source",
-      formula: "Net imposable × taux PAS de la fiche",
-      value: payslip.pasAmount,
-      hint: `Taux fiche : ${(employee.pasRate * 100).toFixed(1)} %.`,
-    },
-    {
-      id: "net",
-      title: "Net à payer",
-      formula: "Net salarial + indemnités − acompte − PAS",
-      value: payslip.net,
-      hint: "Montant viré au salarié.",
-    },
-    {
-      id: "cost",
-      title: "Coût employeur",
-      formula: "Brut + cotisations employeur (après Fillon)",
-      value: payslip.employerCost,
-      hint: "Ce que l’entreprise dépense vraiment.",
-    },
-  ];
-  res.json({
+  };
+  const baseline = calculatePayslip({
+    ...common,
     employee,
+    bonus: 0,
+    advance: 0,
+  });
+  const payslip = calculatePayslip({
+    ...common,
+    employee: scenarioEmployee,
+    bonus: parsed.data.bonus,
+    advance: parsed.data.advance ?? 0,
+  });
+  const steps = buildCalcSteps({
+    employee: scenarioEmployee,
     settings: store.settings,
     payslip,
+    workedDays: parsed.data.workedDays,
+  });
+  res.json({
+    employee: scenarioEmployee,
+    settings: store.settings,
+    payslip,
+    baseline,
     steps,
+    delta: {
+      gross: payslip.gross - baseline.gross,
+      net: payslip.net - baseline.net,
+      employerCost: payslip.employerCost - baseline.employerCost,
+      employeeCharges: payslip.employeeCharges - baseline.employeeCharges,
+    },
   });
 });
 
@@ -221,7 +136,7 @@ payrollRouter.get("/periods/:id", (req, res) => {
     res.status(404).json({ error: "Période introuvable" });
     return;
   }
-  const slips = store.payslips.filter((item) => item.periodId === period.id);
+  const slips = store.payslips.filter((item) => item.periodId === period.id && !item.superseded);
   const suggestions = store.employees
     .filter((employee) => employee.status !== "terminated")
     .map((employee) => {
@@ -270,11 +185,20 @@ payrollRouter.post("/periods/:id/calculate", (req, res) => {
     if (!period) return { error: "Période introuvable", status: 404 as const };
     if (period.status === "paid") return { error: "Période déjà payée", status: 409 as const };
 
-    store.payslips = store.payslips.filter((item) => item.periodId !== period.id);
+    const previous = store.payslips.filter((item) => item.periodId === period.id);
+    previous.forEach((item) => {
+      item.superseded = true;
+    });
+    const nextVersion = Math.max(0, ...previous.map((item) => item.version ?? 1)) + 1;
+    const actor = getUser(req);
     const slips = parsed.data.entries
       .map((entry) => {
         const employee = store.employees.find((item) => item.id === entry.employeeId);
         if (!employee || employee.status === "terminated") return null;
+        const leaveDays = store.leaves
+          .filter((item) => item.employeeId === employee.id && item.status === "approved")
+          .reduce((sum, item) => sum + leaveDaysInMonth(item.startDate, item.endDate, period.year, period.month), 0);
+        const workedDays = entry.workedDays;
         const advance = store.advances
           .filter(
             (item) =>
@@ -287,7 +211,7 @@ payrollRouter.post("/periods/:id/calculate", (req, res) => {
         const slip = calculatePayslip({
           employee,
           periodId: period.id,
-          workedDays: entry.workedDays,
+          workedDays,
           overtimeHours: entry.overtimeHours,
           bonus: entry.bonus,
           advance,
@@ -298,9 +222,11 @@ payrollRouter.post("/periods/:id/calculate", (req, res) => {
           fillonT: store.settings.fillonT,
           rates: store.rates,
         });
+        slip.version = nextVersion;
+        slip.superseded = false;
         notifyEmployee(store, employee.id, {
-          title: "Bulletin disponible",
-          body: `Votre paie ${String(period.month).padStart(2, "0")}/${period.year} a été calculée.`,
+          title: nextVersion > 1 ? "Bulletin recalculé" : "Bulletin disponible",
+          body: `Votre paie ${String(period.month).padStart(2, "0")}/${period.year} a été calculée${leaveDays ? ` · ${leaveDays} j d’absence décomptés des jours ouvrés saisis` : ""}.`,
           link: `/espace/bulletins/${slip.id}`,
         });
         return slip;
@@ -310,6 +236,12 @@ payrollRouter.post("/periods/:id/calculate", (req, res) => {
     store.payslips.push(...slips);
     period.status = "calculated";
     period.calculatedAt = new Date().toISOString();
+    pushAudit(store, {
+      actorEmail: actor.email,
+      action: "payroll.calculate",
+      detail: `Cycle ${period.month}/${period.year} · version ${nextVersion} · ${slips.length} bulletins`,
+      link: `/admin/paie/${period.id}`,
+    });
     return { period, payslips: slips };
   });
 
@@ -327,6 +259,12 @@ payrollRouter.post("/periods/:id/validate", (req, res) => {
     if (period.status !== "calculated") return { error: "Calculez d'abord la paie", status: 409 as const };
     period.status = "validated";
     period.validatedAt = new Date().toISOString();
+    pushAudit(store, {
+      actorEmail: getUser(req).email,
+      action: "payroll.validate",
+      detail: `Cycle ${period.month}/${period.year} validé`,
+      link: `/admin/paie/${period.id}`,
+    });
     return { period };
   });
   if (isActionError(result)) {
@@ -348,6 +286,12 @@ payrollRouter.post("/periods/:id/pay", (req, res) => {
         item.status = "settled";
       }
     });
+    pushAudit(store, {
+      actorEmail: getUser(req).email,
+      action: "payroll.pay",
+      detail: `Cycle ${period.month}/${period.year} payé`,
+      link: `/admin/paie/${period.id}`,
+    });
     return { period };
   });
   if (isActionError(result)) {
@@ -368,7 +312,7 @@ payrollRouter.get("/periods/:id/export", (req, res) => {
     res.status(409).json({ error: "Calculez la paie avant l'export bancaire" });
     return;
   }
-  const slips = store.payslips.filter((item) => item.periodId === period.id);
+  const slips = store.payslips.filter((item) => item.periodId === period.id && !item.superseded);
   const rows = slips.map((slip) => {
     const employee = store.employees.find((item) => item.id === slip.employeeId);
     return {
@@ -388,7 +332,7 @@ payrollRouter.get("/periods/:id/export", (req, res) => {
 
 payrollRouter.get("/employee/:employeeId/payslips", (req, res) => {
   const store = loadStore();
-  const slips = store.payslips.filter((item) => item.employeeId === req.params.employeeId);
+  const slips = store.payslips.filter((item) => item.employeeId === req.params.employeeId && !item.superseded);
   res.json(slips);
 });
 

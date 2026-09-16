@@ -82,6 +82,9 @@ app.use("/api/advances", proxyTo(PAYROLL_URL));
 app.use("/api/leaves", proxyTo(TIME_URL));
 app.use("/api/documents", proxyTo(TIME_URL));
 app.use("/api/notifications", proxyTo(TIME_URL));
+app.use("/api/audit", proxyTo(TIME_URL));
+app.use("/api/assistant", proxyTo(PAYROLL_URL));
+app.use("/api/attestations", proxyTo(HR_URL));
 
 app.use("/api", (_req, res) => {
   res.status(404).json({ error: "Route introuvable" });

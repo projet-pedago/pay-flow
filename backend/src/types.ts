@@ -41,6 +41,7 @@ export type Employee = {
   pasRate: number;
   mealTicket5: number;
   mealTicket1650: number;
+  contractEndDate?: string;
 };
 
 export type ContributionRate = {
@@ -114,6 +115,8 @@ export type Payslip = {
   employerRelief: number;
   csgUnimposedMention: number;
   lines: PayslipLine[];
+  version?: number;
+  superseded?: boolean;
 };
 
 export type PayrollPeriod = {
@@ -204,6 +207,15 @@ export type AppNotification = {
   createdAt: string;
 };
 
+export type AuditEvent = {
+  id: string;
+  at: string;
+  actorEmail: string;
+  action: string;
+  detail: string;
+  link?: string;
+};
+
 export type Store = {
   settings: Settings;
   departments: Department[];
@@ -219,6 +231,7 @@ export type Store = {
   clients: NetworkClient[];
   partners: NetworkPartner[];
   invoices: NetworkInvoice[];
+  auditLog: AuditEvent[];
 };
 
 export type NetworkClientKind = "internal" | "external";

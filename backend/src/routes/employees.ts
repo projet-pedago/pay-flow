@@ -34,6 +34,7 @@ const employeeSchema = z.object({
   pasRate: z.number().min(0).max(1).optional(),
   mealTicket5: z.number().min(0).optional(),
   mealTicket1650: z.number().min(0).optional(),
+  contractEndDate: z.string().optional().or(z.literal("")),
 });
 
 function withLegalDefaults(
@@ -55,11 +56,55 @@ function withLegalDefaults(
     pasRate: data.pasRate ?? 0,
     mealTicket5: data.mealTicket5 ?? 0,
     mealTicket1650: data.mealTicket1650 ?? 0,
+    contractEndDate: data.contractEndDate || undefined,
   };
 }
 
 export const employeesRouter = Router();
 employeesRouter.use(requireAdmin);
+
+employeesRouter.get("/export", (_req, res) => {
+  const { employees, departments } = loadStore();
+  const header = [
+    "matricule",
+    "civility",
+    "firstName",
+    "lastName",
+    "email",
+    "jobTitle",
+    "department",
+    "contractType",
+    "hireDate",
+    "contractEndDate",
+    "status",
+    "baseSalary",
+    "city",
+  ];
+  const lines = [
+    header.join(";"),
+    ...employees.map((employee) => {
+      const department = departments.find((item) => item.id === employee.departmentId);
+      return [
+        employee.matricule,
+        employee.civility,
+        employee.firstName,
+        employee.lastName,
+        employee.email,
+        employee.jobTitle,
+        department?.name ?? "",
+        employee.contractType,
+        employee.hireDate,
+        employee.contractEndDate ?? "",
+        employee.status,
+        String(employee.baseSalary).replace(".", ","),
+        employee.city,
+      ]
+        .map((value) => `"${String(value).replaceAll('"', '""')}"`)
+        .join(";");
+    }),
+  ];
+  res.json({ filename: "effectifs-payrollflow.csv", csv: `${lines.join("\n")}\n` });
+});
 
 employeesRouter.get("/", (_req, res) => {
   const { employees } = loadStore();

@@ -41,6 +41,7 @@ export type Employee = {
   pasRate: number;
   mealTicket5: number;
   mealTicket1650: number;
+  contractEndDate?: string;
 };
 
 export type EmployeeDraft = Omit<Employee, "id">;
@@ -128,6 +129,8 @@ export type Payslip = {
   employerRelief: number;
   csgUnimposedMention: number;
   lines: PayslipLine[];
+  version?: number;
+  superseded?: boolean;
 };
 
 export type PayrollPeriod = {
@@ -168,6 +171,10 @@ export type DashboardData = {
     net: number;
     employerCost: number;
     averageNet: number;
+    averageCost: number;
+    absenteeismRate: number;
+    pendingValidations: number;
+    contractsExpiring: number;
   };
   latestPeriod: PayrollPeriod | null;
   kpiPeriod: PayrollPeriod | null;
@@ -179,6 +186,9 @@ export type DashboardData = {
     payroll: number;
     budget: number;
   }[];
+  gender: { women: number; men: number };
+  contracts: { type: ContractType; count: number }[];
+  forecast: { label: string; employerCost: number }[];
   history: {
     id: string;
     label: string;
@@ -351,5 +361,23 @@ export type PayslipPreview = {
   employee: Employee;
   settings: Settings;
   payslip: Payslip;
+  baseline: Payslip;
   steps: CalcStep[];
+  delta: { gross: number; net: number; employerCost: number; employeeCharges: number };
+};
+
+export type AssistantReply = {
+  answer: string;
+  citations: { title: string; link: string }[];
+  suggestions: string[];
+};
+
+export type Attestation = {
+  kind: "travail" | "salaire";
+  title: string;
+  issuedAt: string;
+  company: Settings;
+  employee: Employee;
+  departmentName: string;
+  lastPayslip?: { periodLabel: string; gross: number; net: number; employerCost: number };
 };

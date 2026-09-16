@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
+import { LeaveCalendar } from "@/components/leave-calendar";
 import { ErrorState, LoadingState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,8 @@ export function LeavesPage() {
             : "Posez un congé. Le solde se met à jour dès validation."}
         </p>
       </div>
+
+      <LeaveCalendar leaves={query.data.leaves} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         {(admin ? query.data.balances.slice(0, 4) : query.data.balances).map((balance) => (

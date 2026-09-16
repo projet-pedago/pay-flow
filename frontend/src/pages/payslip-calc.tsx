@@ -19,6 +19,7 @@ export function PayslipCalcPage() {
   const [overtimeHours, setOvertimeHours] = useState(0);
   const [bonus, setBonus] = useState(0);
   const [advance, setAdvance] = useState(0);
+  const [raisePercent, setRaisePercent] = useState(0);
   const [preview, setPreview] = useState<PayslipPreview | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -32,7 +33,7 @@ export function PayslipCalcPage() {
     try {
       const result = await api<PayslipPreview>("/api/payroll/preview", {
         method: "POST",
-        body: JSON.stringify({ employeeId, workedDays, overtimeHours, bonus, advance }),
+        body: JSON.stringify({ employeeId, workedDays, overtimeHours, bonus, advance, raisePercent }),
       });
       setPreview(result);
     } catch (err) {
@@ -58,13 +59,12 @@ export function PayslipCalcPage() {
       <div>
         <h2 className="font-display text-3xl sm:text-4xl">Calcul du bulletin</h2>
         <p className="mt-2 max-w-2xl text-sm text-ink/60">
-          Même moteur que la fiche de paie officielle : prorata des jours, heures sup, cotisations, Fillon, tickets
-          repas, acompte et prélèvement à la source.
+          Même moteur que la fiche de paie officielle : prorata, cotisations, Fillon, tickets, acompte, PAS — et simulation d’une hausse ou d’une prime.
         </p>
       </div>
 
       <Card>
-        <CardContent className="grid gap-4 md:grid-cols-5">
+        <CardContent className="grid gap-4 md:grid-cols-6">
           <div className="md:col-span-2">
             <Label>Salarié</Label>
             <Select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
@@ -88,12 +88,16 @@ export function PayslipCalcPage() {
             <Input type="number" min={0} value={bonus} onChange={(e) => setBonus(Number(e.target.value))} />
           </div>
           <div>
+            <Label>Hausse %</Label>
+            <Input type="number" min={0} max={80} value={raisePercent} onChange={(e) => setRaisePercent(Number(e.target.value))} />
+          </div>
+          <div>
             <Label>Acompte €</Label>
             <Input type="number" min={0} value={advance} onChange={(e) => setAdvance(Number(e.target.value))} />
           </div>
-          <div className="md:col-span-5 flex justify-end">
+          <div className="md:col-span-6 flex justify-end">
             <Button onClick={() => void simulate()} disabled={saving}>
-              {saving ? "Calcul…" : "Recalculer"}
+              {saving ? "Calcul…" : "Simuler"}
             </Button>
           </div>
         </CardContent>
@@ -106,6 +110,17 @@ export function PayslipCalcPage() {
             <Kpi label="Net à payer" value={moneyExact(preview.payslip.net, currency)} accent />
             <Kpi label="Coût employeur" value={moneyExact(preview.payslip.employerCost, currency)} />
           </div>
+          {preview.delta && (preview.delta.net !== 0 || preview.delta.gross !== 0) ? (
+            <Card className="border-sage/30">
+              <CardContent>
+                <p className="text-sm font-semibold">Impact vs situation actuelle (sans prime ni hausse)</p>
+                <p className="mt-2 text-sm text-ink/60">
+                  Net {signed(preview.delta.net, currency)} · charges salariales {signed(preview.delta.employeeCharges, currency)} ·
+                  coût employeur {signed(preview.delta.employerCost, currency)}
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
 
           <Card>
             <CardHeader>
@@ -185,6 +200,11 @@ export function PayslipCalcPage() {
       ) : null}
     </div>
   );
+}
+
+function signed(value: number, currency: "EUR" | "XOF") {
+  const prefix = value > 0 ? "+" : "";
+  return `${prefix}${moneyExact(value, currency)}`;
 }
 
 function Kpi({ label, value, accent }: { label: string; value: string; accent?: boolean }) {

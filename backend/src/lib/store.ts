@@ -95,10 +95,25 @@ function readAndMigrate(): Store {
     store.invoices = network.invoices;
     dirty = true;
   }
+  if (!Array.isArray(store.auditLog)) {
+    store.auditLog = [];
+    dirty = true;
+  }
   if (store.settings.advanceCapRatio == null) {
     store.settings.advanceCapRatio = 0.3;
     dirty = true;
   }
+  store.employees = store.employees.map((employee) => {
+    if (employee.id === "emp-008" && !employee.contractEndDate) {
+      dirty = true;
+      return { ...employee, contractEndDate: "2026-10-31" };
+    }
+    if (employee.id === "emp-012" && !employee.contractEndDate) {
+      dirty = true;
+      return { ...employee, contractEndDate: "2027-08-31" };
+    }
+    return employee;
+  });
   if (!store.settings.companyAddress) {
     store.settings = {
       ...store.settings,

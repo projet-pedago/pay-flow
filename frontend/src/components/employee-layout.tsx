@@ -1,4 +1,4 @@
-import { Banknote, CalendarDays, FileText, FolderOpen, Home, LogOut, Menu, UserRound, X } from "lucide-react";
+import { Banknote, CalendarDays, FileText, FolderOpen, History, Home, LogOut, Menu, Sparkles, UserRound, X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { NotificationBell } from "@/components/notification-bell";
@@ -10,8 +10,10 @@ const links = [
   { to: "/espace", label: "Accueil", icon: Home },
   { to: "/espace/bulletins", label: "Mes bulletins", icon: FileText },
   { to: "/espace/conges", label: "Congés", icon: CalendarDays },
+  { to: "/espace/demandes", label: "Demandes", icon: History },
   { to: "/espace/acomptes", label: "Acomptes", icon: Banknote },
   { to: "/espace/dossier", label: "Dossier", icon: FolderOpen },
+  { to: "/espace/assistant", label: "Assistant", icon: Sparkles },
   { to: "/espace/profil", label: "Profil", icon: UserRound },
 ];
 

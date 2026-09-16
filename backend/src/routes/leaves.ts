@@ -1,26 +1,11 @@
 import { Router } from "express";
 import { z } from "zod";
 import { getUser, requireAdmin, requireAuth } from "../auth.js";
+import { pushAudit } from "../lib/audit.js";
 import { countWeekdays, LEAVE_LABELS } from "../lib/dates.js";
+import { leaveBalancesFor, leaveRemaining } from "../lib/leave-balance.js";
 import { notifyAdmins, notifyEmployee } from "../lib/notify.js";
 import { id, loadStore, mutate } from "../lib/store.js";
-import type { LeaveType, Store } from "../types.js";
-
-const ACQUIRED: Record<"cp" | "rtt", number> = { cp: 25, rtt: 10 };
-
-function leaveRemaining(store: Store, employeeId: string, type: LeaveType, exceptId?: string): number {
-  if (type !== "cp" && type !== "rtt") return Number.POSITIVE_INFINITY;
-  const used = store.leaves
-    .filter(
-      (item) =>
-        item.id !== exceptId &&
-        item.employeeId === employeeId &&
-        item.type === type &&
-        (item.status === "approved" || item.status === "pending"),
-    )
-    .reduce((sum, item) => sum + item.days, 0);
-  return ACQUIRED[type] - used;
-}
 
 export const leavesRouter = Router();
 leavesRouter.use(requireAuth);
@@ -38,17 +23,11 @@ leavesRouter.get("/", (req, res) => {
     });
   const balances = store.employees
     .filter((employee) => (user.role === "admin" ? true : employee.id === user.employeeId))
-    .map((employee) => {
-      const approved = store.leaves.filter((item) => item.employeeId === employee.id && item.status === "approved");
-      const usedCp = approved.filter((item) => item.type === "cp").reduce((sum, item) => sum + item.days, 0);
-      const usedRtt = approved.filter((item) => item.type === "rtt").reduce((sum, item) => sum + item.days, 0);
-      return {
-        employeeId: employee.id,
-        name: `${employee.firstName} ${employee.lastName}`,
-        cp: { acquired: ACQUIRED.cp, used: usedCp, remaining: ACQUIRED.cp - usedCp },
-        rtt: { acquired: ACQUIRED.rtt, used: usedRtt, remaining: ACQUIRED.rtt - usedRtt },
-      };
-    });
+    .map((employee) => ({
+      employeeId: employee.id,
+      name: `${employee.firstName} ${employee.lastName}`,
+      ...leaveBalancesFor(store, employee.id),
+    }));
   res.json({ leaves: decorated, balances, labels: LEAVE_LABELS });
 });
 
@@ -132,6 +111,13 @@ leavesRouter.post("/:id/decide", requireAdmin, (req, res) => {
       title: parsed.data.status === "approved" ? "Absence acceptée" : "Absence refusée",
       body: `${LEAVE_LABELS[leave.type]} du ${leave.startDate} au ${leave.endDate}`,
       link: "/espace/conges",
+    });
+    const actor = getUser(req);
+    pushAudit(store, {
+      actorEmail: actor.email,
+      action: parsed.data.status === "approved" ? "leave.approve" : "leave.reject",
+      detail: `${LEAVE_LABELS[leave.type]} · ${leave.days} j · ${leave.startDate} → ${leave.endDate}`,
+      link: "/admin/conges",
     });
     return { leave };
   });

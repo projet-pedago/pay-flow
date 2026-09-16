@@ -44,6 +44,7 @@ export function PayslipPage() {
         department={department}
         settings={settings}
         bulletin={bulletin}
+        verifyUrl={`${window.location.origin}${user?.role === "admin" ? `/admin/bulletins/${payslip.id}` : `/espace/bulletins/${payslip.id}`}`}
       />
     </div>
   );

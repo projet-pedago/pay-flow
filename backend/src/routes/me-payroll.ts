@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { getUser } from "../auth.js";
+import { leaveBalancesFor } from "../lib/leave-balance.js";
 import { loadStore } from "../lib/store.js";
 
 export const mePayrollRouter = Router();
@@ -12,7 +13,7 @@ mePayrollRouter.get("/payslips", (req, res) => {
   }
   const store = loadStore();
   const slips = store.payslips
-    .filter((item) => item.employeeId === user.employeeId)
+    .filter((item) => item.employeeId === user.employeeId && !item.superseded)
     .map((payslip) => ({
       payslip,
       period: store.periods.find((item) => item.id === payslip.periodId),
@@ -34,7 +35,7 @@ mePayrollRouter.get("/summary", (req, res) => {
   const store = loadStore();
   const employee = store.employees.find((item) => item.id === user.employeeId);
   const department = store.departments.find((item) => item.id === employee?.departmentId);
-  const mine = store.payslips.filter((item) => item.employeeId === user.employeeId);
+  const mine = store.payslips.filter((item) => item.employeeId === user.employeeId && !item.superseded);
   const sortedPeriods = [...store.periods].sort((a, b) => b.year - a.year || b.month - a.month);
   const latestSlip = mine
     .map((payslip) => ({
@@ -47,6 +48,9 @@ mePayrollRouter.get("/summary", (req, res) => {
       return by - ay || (b.period?.month ?? 0) - (a.period?.month ?? 0);
     })[0];
 
+  const pendingLeaves = store.leaves.filter((item) => item.employeeId === user.employeeId && item.status === "pending").length;
+  const pendingAdvances = store.advances.filter((item) => item.employeeId === user.employeeId && item.status === "pending").length;
+
   res.json({
     settings: store.settings,
     employee,
@@ -55,5 +59,7 @@ mePayrollRouter.get("/summary", (req, res) => {
     lastPayslip: latestSlip ?? null,
     payslipCount: mine.length,
     ytdNet: mine.reduce((sum, item) => sum + item.net, 0),
+    leave: employee ? leaveBalancesFor(store, employee.id) : null,
+    pendingRequests: pendingLeaves + pendingAdvances,
   });
 });

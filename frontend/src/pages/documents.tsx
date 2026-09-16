@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { ErrorState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,20 @@ export function DocumentsPage() {
                   </Button>
                 </div>
               ))}
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Link
+                  to={user?.role === "admin" ? `/admin/attestations/${pack.employeeId}/travail` : "/espace/attestations/travail"}
+                  className="text-xs font-medium text-sage underline"
+                >
+                  Attestation de travail
+                </Link>
+                <Link
+                  to={user?.role === "admin" ? `/admin/attestations/${pack.employeeId}/salaire` : "/espace/attestations/salaire"}
+                  className="text-xs font-medium text-sage underline"
+                >
+                  Certificat de salaire
+                </Link>
+              </div>
             </CardContent>
           </Card>
         ))}

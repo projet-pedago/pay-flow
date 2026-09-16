@@ -49,12 +49,14 @@ export function OfficialPayslip({
   department,
   settings,
   bulletin,
+  verifyUrl,
 }: {
   payslip: Payslip;
   employee: Employee;
   department?: Department;
   settings: Settings;
   bulletin: BulletinMeta;
+  verifyUrl?: string;
 }) {
   const dates = [...bulletin.leaveDates, { from: "", to: "" }, { from: "", to: "" }, { from: "", to: "" }].slice(0, 3);
   const person = `${employee.civility ?? "M"} ${employee.lastName.toUpperCase()} ${employee.firstName.toUpperCase()}`;
@@ -285,6 +287,20 @@ export function OfficialPayslip({
           })}
         </tbody>
       </table>
+      {verifyUrl ? (
+        <div className="mt-3 flex items-end justify-between gap-4 text-[8px]">
+          <p>
+            Contrôle d’authenticité : scanner le QR. Bulletin {employee.matricule}
+            {payslip.version ? ` · v${payslip.version}` : ""}.
+          </p>
+          <img
+            alt="QR de vérification"
+            width={72}
+            height={72}
+            src={`https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(verifyUrl)}`}
+          />
+        </div>
+      ) : null}
     </article>
   );
 }

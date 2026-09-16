@@ -80,6 +80,14 @@ export function EmployeeDetailPage() {
             onSubmit={() => void save()}
             saving={saving}
           />
+          <div className="mt-4 flex flex-wrap gap-3 text-sm">
+            <Link to={`/admin/attestations/${employee.id}/travail`} className="text-sage underline">
+              Attestation de travail
+            </Link>
+            <Link to={`/admin/attestations/${employee.id}/salaire`} className="text-sage underline">
+              Certificat de salaire
+            </Link>
+          </div>
         </CardContent>
       </Card>
 

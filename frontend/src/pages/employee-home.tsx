@@ -17,6 +17,8 @@ type Summary = {
   lastPayslip: { payslip: Payslip; period?: PayrollPeriod } | null;
   payslipCount: number;
   ytdNet: number;
+  leave?: { cp: { remaining: number; used: number; acquired: number }; rtt: { remaining: number; used: number; acquired: number } };
+  pendingRequests?: number;
 };
 
 export function EmployeeHomePage() {
@@ -42,7 +44,7 @@ export function EmployeeHomePage() {
         </div>
       </FadeIn>
 
-      <Stagger className="grid gap-3 sm:grid-cols-3">
+      <Stagger className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <MotionItem variants={staggerItem}>
           <Link to="/espace/conges" className="block rounded-3xl border border-employee-line bg-white px-4 py-3 text-sm transition hover:border-employee-accent/40">
             Poser un congé
@@ -58,9 +60,19 @@ export function EmployeeHomePage() {
             Compléter mon dossier
           </Link>
         </MotionItem>
+        <MotionItem variants={staggerItem}>
+          <Link to="/espace/demandes" className="block rounded-3xl border border-employee-line bg-white px-4 py-3 text-sm transition hover:border-employee-accent/40">
+            Historique des demandes{data.pendingRequests ? ` · ${data.pendingRequests} en cours` : ""}
+          </Link>
+        </MotionItem>
+        <MotionItem variants={staggerItem}>
+          <Link to="/espace/attestations/travail" className="block rounded-3xl border border-employee-line bg-white px-4 py-3 text-sm transition hover:border-employee-accent/40">
+            Attestation de travail
+          </Link>
+        </MotionItem>
       </Stagger>
 
-      <Stagger className="grid gap-4 sm:grid-cols-3">
+      <Stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MotionItem variants={staggerItem}>
           <Card className="rounded-3xl border-employee-line shadow-none">
             <CardContent>
@@ -68,6 +80,17 @@ export function EmployeeHomePage() {
               <p className="font-display mt-2 text-3xl">{data.lastPayslip ? money(data.lastPayslip.payslip.net, currency) : "—"}</p>
               <p className="mt-2 text-xs text-employee/40">
                 {data.lastPayslip?.period ? monthLabel(data.lastPayslip.period.year, data.lastPayslip.period.month) : "Aucun bulletin"}
+              </p>
+            </CardContent>
+          </Card>
+        </MotionItem>
+        <MotionItem variants={staggerItem}>
+          <Card className="rounded-3xl border-employee-line shadow-none">
+            <CardContent>
+              <p className="text-sm text-employee/50">Congés restants</p>
+              <p className="font-display mt-2 text-3xl">{data.leave ? `${data.leave.cp.remaining} j` : "—"}</p>
+              <p className="mt-2 text-xs text-employee/40">
+                CP {data.leave?.cp.remaining ?? "—"} · RTT {data.leave?.rtt.remaining ?? "—"}
               </p>
             </CardContent>
           </Card>

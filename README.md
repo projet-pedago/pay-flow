@@ -43,26 +43,33 @@ Sans fichiers `.env`, le login utilise le **jeu local** (JSON + mots de passe ha
 
 ### Console administrateur (`/admin`)
 
-- Pilotage (KPI, alertes, anomalies)
-- **Calcul du bulletin** : simulation pas à pas (prorata, cotisations, Fillon, PAS)
+- Pilotage (KPI, alertes, anomalies, **absentéisme**, **coût moyen**, **hommes/femmes**, **types de contrats**, prévision 3 mois)
+- **Assistant RH** : questions sur le solde de congés, le bulletin, une simulation d’augmentation (données réelles, sans hallucination)
+- **Calcul du bulletin** : simulation pas à pas + **hausse de salaire / prime** et écart de charges
 - **Réseau & factures** : salariés internes, clients internes, entreprises facturées, freelances, intérim, portage
-- Employés (fiche RH, matricule, n° sécu, horaire, tickets repas, import CSV)
+- Employés (fiche RH, **date de fin de contrat**, alertes d’échéance, import/export CSV)
 - Départements
-- Cycles de paie (brouillon → calcul → validation → paiement)
-- Bulletins A4 (impression / PDF)
-- Congés, acomptes, dossiers RH
-- Notifications
+- Cycles de paie (brouillon → calcul → validation → paiement, **versions de bulletins** conservées)
+- Bulletins A4 (impression / PDF, **QR de vérification**)
+- Congés (demande, validation RH, **calendrier partagé**, impact sur les jours du cycle)
+- Acomptes, dossiers RH
+- **Attestation de travail** et **certificat de salaire** (impression / PDF)
+- Notifications in-app (génération de bulletin, absences, acomptes)
+- Journal d’audit (calcul, validation, décisions d’absence)
 - Paramètres société (SIRET, APE, convention, barème URSSAF)
 - Export fichier de virement (CSV)
 - Réinitialiser la démo
 
 ### Espace collaborateur (`/espace`)
 
-- Accueil et dernier net à payer
-- Mes bulletins (consultation + impression)
-- Demandes de congés / RTT
+- Accueil (dernier net, soldes de congés)
+- Mes bulletins (consultation + impression + QR)
+- Demandes de congés / RTT + **calendrier**
+- **Historique des demandes**
 - Demandes d’acompte
 - Dossier RH (CNI, RIB, contrat, Vitale)
+- **Attestations** (travail, certificat de salaire)
+- Assistant RH
 - Profil (téléphone, ville, IBAN)
 
 ### Stack visuelle (sans Next.js)

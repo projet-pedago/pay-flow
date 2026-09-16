@@ -1,15 +1,17 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { Toaster } from "sonner";
+import { AssistantDock } from "@/components/assistant-dock";
 import { EmployeeLayout } from "@/components/employee-layout";
 import { GuestOnly, HomeRedirect, RequireAuth } from "@/components/guards";
 import { AdminLayout } from "@/components/layout";
 import { AuthProvider } from "@/lib/auth";
+import { AssistantPage } from "@/pages/assistant";
+import { AttestationPage } from "@/pages/attestation";
 import { DashboardPage } from "@/pages/dashboard";
 import { DepartmentsPage } from "@/pages/departments";
 import { EmployeeDetailPage } from "@/pages/employee-detail";
 import { EmployeeHomePage } from "@/pages/employee-home";
 import { EmployeePayslipsPage } from "@/pages/employee-payslips";
 import { EmployeeProfilePage } from "@/pages/employee-profile";
+import { EmployeeRequestsPage } from "@/pages/employee-requests";
 import { EmployeesPage } from "@/pages/employees";
 import { AdvancesPage } from "@/pages/advances";
 import { DocumentsPage } from "@/pages/documents";
@@ -21,6 +23,8 @@ import { NetworkPage } from "@/pages/network";
 import { PayslipPage } from "@/pages/payslip";
 import { PeriodDetailPage } from "@/pages/period-detail";
 import { SettingsPage } from "@/pages/settings";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { Toaster } from "sonner";
 import type { ReactNode } from "react";
 
 function AdminShell({ children }: { children: ReactNode }) {
@@ -59,22 +63,28 @@ export default function App() {
           <Route path="/admin/departements" element={<AdminShell><DepartmentsPage /></AdminShell>} />
           <Route path="/admin/paie" element={<AdminShell><PayrollPage /></AdminShell>} />
           <Route path="/admin/calcul" element={<AdminShell><PayslipCalcPage /></AdminShell>} />
+          <Route path="/admin/assistant" element={<AdminShell><AssistantPage /></AdminShell>} />
           <Route path="/admin/reseau" element={<AdminShell><NetworkPage /></AdminShell>} />
           <Route path="/admin/paie/:id" element={<AdminShell><PeriodDetailPage /></AdminShell>} />
           <Route path="/admin/bulletins/:id" element={<AdminShell><PayslipPage /></AdminShell>} />
           <Route path="/admin/conges" element={<AdminShell><LeavesPage /></AdminShell>} />
           <Route path="/admin/acomptes" element={<AdminShell><AdvancesPage /></AdminShell>} />
           <Route path="/admin/dossiers" element={<AdminShell><DocumentsPage /></AdminShell>} />
+          <Route path="/admin/attestations/:employeeId/:kind" element={<AdminShell><AttestationPage /></AdminShell>} />
           <Route path="/admin/parametres" element={<AdminShell><SettingsPage /></AdminShell>} />
           <Route path="/espace" element={<EmployeeShell><EmployeeHomePage /></EmployeeShell>} />
           <Route path="/espace/bulletins" element={<EmployeeShell><EmployeePayslipsPage /></EmployeeShell>} />
           <Route path="/espace/bulletins/:id" element={<EmployeeShell><PayslipPage /></EmployeeShell>} />
           <Route path="/espace/conges" element={<EmployeeShell><LeavesPage /></EmployeeShell>} />
+          <Route path="/espace/demandes" element={<EmployeeShell><EmployeeRequestsPage /></EmployeeShell>} />
           <Route path="/espace/acomptes" element={<EmployeeShell><AdvancesPage /></EmployeeShell>} />
           <Route path="/espace/dossier" element={<EmployeeShell><DocumentsPage /></EmployeeShell>} />
+          <Route path="/espace/attestations/:kind" element={<EmployeeShell><AttestationPage /></EmployeeShell>} />
+          <Route path="/espace/assistant" element={<EmployeeShell><AssistantPage /></EmployeeShell>} />
           <Route path="/espace/profil" element={<EmployeeShell><EmployeeProfilePage /></EmployeeShell>} />
           <Route path="*" element={<HomeRedirect />} />
         </Routes>
+        <AssistantDock />
         <Toaster richColors position="top-right" />
       </BrowserRouter>
     </AuthProvider>

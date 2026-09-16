@@ -55,6 +55,7 @@ function staff(
     pasRate?: number;
     mealTicket5?: number;
     mealTicket1650?: number;
+    contractEndDate?: string;
   },
 ): Employee {
   const cadre = /directeur|directrice|lead|responsable|chef/i.test(data.jobTitle);
@@ -96,11 +97,11 @@ export function createSeed(): Store {
     staff(5, { firstName: "Aïcha", lastName: "Traoré", email: "aicha.traore@payrollflow.demo", phone: "+33 7 08 44 21 90", departmentId: uid("dep", 4), jobTitle: "Cheffe des opérations", contractType: "CDI", hireDate: "2018-11-04", baseSalary: 3900, status: "active", iban: "FR76 ACCT-000022 7890 123", city: "Paris", address: "55 BOULEVARD VOLTAIRE", postalCode: "75011" }),
     staff(6, { firstName: "Léa", lastName: "Moreau", email: "lea.moreau@payrollflow.demo", phone: "+33 6 77 12 45 08", departmentId: uid("dep", 5), jobTitle: "Contrôleuse de gestion", contractType: "CDI", hireDate: "2023-02-20", baseSalary: 3600, status: "on_leave", iban: "FR76 ACCT-000015 7890 123", city: "Bordeaux", address: "8 COURS DE L INTENDANCE", postalCode: "33000" }),
     staff(7, { firstName: "Omar", lastName: "Benali", email: "omar.benali@payrollflow.demo", phone: "+33 7 11 90 22 54", departmentId: uid("dep", 3), jobTitle: "Développeur backend", contractType: "CDI", hireDate: "2024-01-15", baseSalary: 3400, status: "active", iban: "FR76 ACCT-000040 7890 123", city: "Marseille", address: "14 LA CANEBIERE", postalCode: "13001" }),
-    staff(8, { firstName: "Camille", lastName: "Roux", email: "camille.roux@payrollflow.demo", phone: "+33 6 02 88 41 17", departmentId: uid("dep", 2), jobTitle: "Chargée RH", contractType: "CDD", hireDate: "2025-03-01", baseSalary: 2800, status: "active", iban: "FR76 ACCT-000035 7890 123", city: "Lille", address: "3 RUE FAIDHERBE", postalCode: "59000" }),
+    staff(8, { firstName: "Camille", lastName: "Roux", email: "camille.roux@payrollflow.demo", phone: "+33 6 02 88 41 17", departmentId: uid("dep", 2), jobTitle: "Chargée RH", contractType: "CDD", hireDate: "2025-03-01", contractEndDate: "2026-10-31", baseSalary: 2800, status: "active", iban: "FR76 ACCT-000035 7890 123", city: "Lille", address: "3 RUE FAIDHERBE", postalCode: "59000" }),
     staff(9, { firstName: "Kwame", lastName: "Mensah", email: "kwame.mensah@payrollflow.demo", phone: "+33 6 24 55 01 92", departmentId: uid("dep", 3), jobTitle: "Ingénieur frontend", contractType: "CDI", hireDate: "2023-07-10", baseSalary: 3700, status: "active", iban: "FR76 ACCT-000018 7890 123", city: "Paris", address: "27 RUE OBERKAMPF", postalCode: "75011" }),
     staff(10, { firstName: "Sofia", lastName: "Martins", email: "sofia.martins@payrollflow.demo", phone: "+33 6 41 77 03 29", departmentId: uid("dep", 5), jobTitle: "Comptable paie", contractType: "CDI", hireDate: "2021-04-19", baseSalary: 3100, status: "active", iban: "FR76 ACCT-000012 7890 123", city: "Toulouse", address: "11 RUE D ALSACE LORRAINE", postalCode: "31000" }),
     staff(11, { firstName: "Yanis", lastName: "Haddad", email: "yanis.haddad@payrollflow.demo", phone: "+33 7 33 10 64 82", departmentId: uid("dep", 4), jobTitle: "Coordinateur logistique", contractType: "CDI", hireDate: "2022-01-03", baseSalary: 2950, status: "active", iban: "FR76 ACCT-000007 7890 123", city: "Strasbourg", address: "6 PLACE KLEBER", postalCode: "67000" }),
-    staff(12, { firstName: "Inès", lastName: "Petit", email: "ines.petit@payrollflow.demo", phone: "+33 6 90 14 55 61", departmentId: uid("dep", 3), jobTitle: "Apprentie QA", contractType: "Alternance", hireDate: "2025-09-01", baseSalary: 1450, status: "active", iban: "FR76 ACCT-000041 7890 123", city: "Rennes", address: "2 RUE SAINT MICHEL", postalCode: "35000", category: "Non Cadre", coefficient: "150", mealTicket5: 10 }),
+    staff(12, { firstName: "Inès", lastName: "Petit", email: "ines.petit@payrollflow.demo", phone: "+33 6 90 14 55 61", departmentId: uid("dep", 3), jobTitle: "Apprentie QA", contractType: "Alternance", hireDate: "2025-09-01", contractEndDate: "2027-08-31", baseSalary: 1450, status: "active", iban: "FR76 ACCT-000041 7890 123", city: "Rennes", address: "2 RUE SAINT MICHEL", postalCode: "35000", category: "Non Cadre", coefficient: "150", mealTicket5: 10 }),
     staff(13, {
       firstName: "Yao",
       lastName: "Lassidan",
@@ -226,6 +227,16 @@ export function createSeed(): Store {
         link: "/espace/acomptes",
         read: false,
         createdAt: "2026-09-05T16:05:00.000Z",
+      },
+    ],
+    auditLog: [
+      {
+        id: "aud-001",
+        at: "2026-08-29T16:00:00.000Z",
+        actorEmail: "admin@payrollflow.demo",
+        action: "payroll.validate",
+        detail: "Cycle 8/2026 validé",
+        link: "/admin/paie",
       },
     ],
   };

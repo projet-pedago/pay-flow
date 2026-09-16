@@ -1,9 +1,12 @@
-import { Building2, TrendingUp, Users, Wallet } from "lucide-react";
+import { Building2, CalendarClock, Users, Wallet } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -12,8 +15,10 @@ import {
 import { FadeIn, MotionItem, Stagger, staggerItem } from "@/components/fade-in";
 import { ErrorState, LoadingState } from "@/components/states";
 import { PeriodBadge } from "@/components/status-badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { monthLabel, money, statusLabel } from "@/lib/format";
+import { api } from "@/lib/api";
+import { monthLabel, money, percent, statusLabel } from "@/lib/format";
 import { photos } from "@/lib/media";
 import type { DashboardData } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
@@ -26,11 +31,20 @@ export function DashboardPage() {
 
   const currency = data.settings.currency;
   const kpis = [
-    { label: "Effectif", value: String(data.kpis.headcount), hint: `${data.kpis.onLeave} en congé`, icon: Users },
-    { label: "Brut du cycle", value: money(data.kpis.gross, currency), hint: "Dernier cycle disponible", icon: Wallet },
-    { label: "Net à payer", value: money(data.kpis.net, currency), hint: `Moy. ${money(data.kpis.averageNet, currency)}`, icon: TrendingUp },
-    { label: "Coût employeur", value: money(data.kpis.employerCost, currency), hint: "Charges incluses", icon: Building2 },
+    { label: "Effectif actif", value: String(data.kpis.headcount), hint: `${data.kpis.onLeave} en congé`, icon: Users },
+    { label: "Masse salariale", value: money(data.kpis.employerCost, currency), hint: "Coût employeur du cycle", icon: Building2 },
+    { label: "Coût moyen / salarié", value: money(data.kpis.averageCost, currency), hint: `Net moy. ${money(data.kpis.averageNet, currency)}`, icon: Wallet },
+    { label: "Absentéisme", value: percent(data.kpis.absenteeismRate), hint: `${data.kpis.pendingValidations} validation(s) RH`, icon: CalendarClock },
   ];
+
+  async function downloadCsv() {
+    const file = await api<{ filename: string; csv: string }>("/api/dashboard/export");
+    const blob = new Blob([file.csv], { type: "text/csv;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = file.filename;
+    link.click();
+  }
 
   return (
     <div className="space-y-6">
@@ -42,23 +56,28 @@ export function DashboardPage() {
             <p className="text-xs font-semibold tracking-[0.2em] text-gold uppercase">{data.settings.companyName}</p>
             <h2 className="font-display mt-1 text-3xl sm:text-4xl">Vue paie en temps réel</h2>
             <p className="mt-2 max-w-2xl text-sm text-white/70">
-              {data.settings.companyCity} · les indicateurs se mettent à jour dès qu’un cycle est calculé, validé ou payé.
+              {data.settings.companyCity} · masse, absentéisme, contrats et répartition se recalculent à chaque cycle.
             </p>
           </div>
-          {data.kpiPeriod ? (
-            <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm">
-              <p className="text-xs text-white/60">Indicateurs basés sur</p>
-              <div className="mt-1 flex items-center gap-2">
-                <span className="font-semibold capitalize">{monthLabel(data.kpiPeriod.year, data.kpiPeriod.month)}</span>
-                <PeriodBadge status={data.kpiPeriod.status} />
+          <div className="relative flex flex-wrap items-center gap-2">
+            <Button variant="outline" className="border-white/30 bg-white/10 text-white hover:bg-white/20" onClick={() => void downloadCsv()}>
+              Export Excel (CSV)
+            </Button>
+            {data.kpiPeriod ? (
+              <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm">
+                <p className="text-xs text-white/60">Indicateurs basés sur</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <span className="font-semibold capitalize">{monthLabel(data.kpiPeriod.year, data.kpiPeriod.month)}</span>
+                  <PeriodBadge status={data.kpiPeriod.status} />
+                </div>
+                {data.latestPeriod && data.latestPeriod.id !== data.kpiPeriod.id ? (
+                  <p className="mt-2 text-xs text-white/50">
+                    Cycle ouvert : {monthLabel(data.latestPeriod.year, data.latestPeriod.month)} ({statusLabel(data.latestPeriod.status)})
+                  </p>
+                ) : null}
               </div>
-              {data.latestPeriod && data.latestPeriod.id !== data.kpiPeriod.id ? (
-                <p className="mt-2 text-xs text-white/50">
-                  Cycle ouvert : {monthLabel(data.latestPeriod.year, data.latestPeriod.month)} ({statusLabel(data.latestPeriod.status)})
-                </p>
-              ) : null}
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
       </FadeIn>
 
@@ -168,6 +187,65 @@ export function DashboardPage() {
                 </div>
               );
             })}
+          </CardContent>
+        </Card>
+      </FadeIn>
+
+      <FadeIn delay={0.14} className="grid gap-4 lg:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <h3 className="font-display text-xl">Hommes / femmes</h3>
+          </CardHeader>
+          <CardContent className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: "Femmes", value: data.gender?.women ?? 0 },
+                    { name: "Hommes", value: data.gender?.men ?? 0 },
+                  ]}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={48}
+                  outerRadius={72}
+                >
+                  <Cell fill="#1f6f5b" />
+                  <Cell fill="#c4a574" />
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <h3 className="font-display text-xl">Contrats</h3>
+          </CardHeader>
+          <CardContent className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={data.contracts ?? []} dataKey="count" nameKey="type" innerRadius={48} outerRadius={72}>
+                  {(data.contracts ?? []).map((item) => (
+                    <Cell key={item.type} fill={item.type === "CDI" ? "#0f3d32" : item.type === "CDD" ? "#c4a574" : item.type === "Alternance" ? "#3d7ea6" : "#888"} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <h3 className="font-display text-xl">Prévision 3 mois</h3>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {(data.forecast ?? []).map((item) => (
+              <div key={item.label} className="flex items-center justify-between text-sm">
+                <span>{item.label}</span>
+                <span className="font-medium">{money(item.employerCost, currency)}</span>
+              </div>
+            ))}
+            <p className="text-xs text-ink/45">À iso-périmètre du dernier cycle chiffré.</p>
           </CardContent>
         </Card>
       </FadeIn>
