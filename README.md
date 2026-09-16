@@ -1,55 +1,192 @@
 # PayRollFlow
 
-Gestion de paie en **microservices**. Les bulletins sont générés au format **officiel français** (Cerfa / bulletin de paie), sur le modèle d’un bulletin réel : ANTARES DS, matricule, SIRET, cotisations SANTE / RETRAITE / CSG, net à payer, PAS et cumuls.
+Application de **gestion de paie** (console RH + espace collaborateur) avec **bulletins officiels français A4**, API en microservices, et **connexion Supabase Auth** (ou login local de secours).
 
-Il n’y a **pas d’inscription**. La connexion passe par **Supabase Auth** (email + mot de passe). Les comptes sont créés par le service RH.
+Il n’y a **pas d’inscription en ligne**. Les comptes sont créés par le service RH (ou par le jeu de démo).
 
-Copiez `frontend/.env.example` → `frontend/.env` et `backend/.env.example` → `backend/.env`, puis renseignez l’URL du projet et les clés `sb_publishable_…` / `sb_secret_…`. La clé secrète reste uniquement côté API.
+---
 
-## Comptes de démonstration
+## Démarrage en 5 minutes
 
-| Rôle | Email | Mot de passe | Interface |
-| --- | --- | --- | --- |
-| Administrateur | `admin@payrollflow.demo` | `AdminHorizon2026!` | Console de pilotage |
-| Collaborateur (bulletin officiel) | `yao.lassidan@payrollflow.demo` | `Horizon2026!` | Fiche de paie août 2026, à l’identique |
-| Autres collaborateurs | leur email professionnel | `Horizon2026!` | Espace personnel |
+1. Dézippez **PayRollFlow.zip** (voir [Télécharger](#télécharger--ouvrir-le-projet)).
+2. Installez **Node.js 22+**.
+3. Deux terminaux :
 
-Ouvrez **Mes bulletins → août 2026** avec le compte Yao Lassidan, puis **Imprimer / PDF** pour obtenir la fiche A4.
-
-## Bulletin officiel
-
-Le document reprend la structure légale :
-
-- Période, paiement, matricule, ancienneté
-- Employeur (SIRET, APE, convention Syntec, indice, coefficient, horaire)
-- Salarié (adresse, n° sécu, emploi, département, catégorie)
-- Tableau Désignation / Nombre / Base / Taux salarial / Gain / Retenue / Part employeur
-- Totaux brut, cotisations, indemnités repas, compteurs de congés
-- NET A PAYER, allègement Fillon, total versé par l’employeur
-- Prélèvement à la source et cumuls période / année
-
-Les paramètres société (adresse, SIRET, convention) et la fiche RH (matricule, n° sécu, horaire, tickets repas) alimentent le bulletin.
-
-## Modules livrés
-
-- Paie : cycles, bulletins officiels A4, acomptes déduits du net, export fichier de virement
-- Temps : congés / RTT / maladie, soldes, validation RH
-- Dossier RH : CNI, RIB, contrat, Vitale
-- Conformité : IBAN, absences et acomptes en attente, pièces manquantes
-- Notifications in-app (cloche) côté admin et collaborateur
-- Import CSV des employés
-
-## Architecture
-
-```
-frontend (React) → gateway :45218
-                     ├─ auth     :45231   login / session
-                     ├─ hr       :45232   employés, départements, import CSV
-                     ├─ payroll  :45233   cycles, bulletins, acomptes, export
-                     └─ time     :45234   congés, dossiers, notifications
+```bash
+cd backend && npm install && npm run dev
 ```
 
-## Lancer en local
+```bash
+cd frontend && npm install && npm run dev
+```
+
+4. Ouvrez **http://127.0.0.1:45217/login**
+5. Connectez-vous :
+
+| Rôle | Email | Mot de passe |
+| --- | --- | --- |
+| Admin | `admin@payrollflow.demo` | `AdminHorizon2026!` |
+| Salarié (bulletin PDF août 2026) | `yao.lassidan@payrollflow.demo` | `Horizon2026!` |
+
+Sans fichiers `.env`, le login utilise le **jeu local** (JSON + mots de passe hashés). Avec Supabase, copiez `frontend/.env.example` et `backend/.env.example` (détail plus bas).
+
+---
+
+## Ce que contient le projet
+
+| Partie | Dossier | Rôle |
+| --- | --- | --- |
+| Interface | `frontend/` | React 19 + Vite + TypeScript + Tailwind + shadcn/ui |
+| API | `backend/` | Express 5, 4 microservices + passerelle |
+| Données démo | `backend/data/store.json` | Créé automatiquement au premier lancement |
+| Docker | `docker-compose.yml` | 6 images (auth, hr, payroll, time, gateway, frontend) |
+
+### Console administrateur (`/admin`)
+
+- Pilotage (KPI, alertes, anomalies)
+- Employés (fiche RH, matricule, n° sécu, horaire, tickets repas, import CSV)
+- Départements
+- Cycles de paie (brouillon → calcul → validation → paiement)
+- Bulletins A4 (impression / PDF)
+- Congés, acomptes, dossiers RH
+- Notifications
+- Paramètres société (SIRET, APE, convention, barème URSSAF)
+- Export fichier de virement (CSV)
+- Réinitialiser la démo
+
+### Espace collaborateur (`/espace`)
+
+- Accueil et dernier net à payer
+- Mes bulletins (consultation + impression)
+- Demandes de congés / RTT
+- Demandes d’acompte
+- Dossier RH (CNI, RIB, contrat, Vitale)
+- Profil (téléphone, ville, IBAN)
+
+---
+
+## Prérequis
+
+- **Node.js 22+** et **npm**
+- (optionnel) **Docker Desktop** pour `docker compose`
+- (optionnel) un projet **Supabase** (Auth email + mot de passe)
+
+Windows : préférez **WSL2 (Ubuntu)** + Node installé **dans WSL**, pas Git Bash seul.
+
+```bash
+node -v    # v22.x recommandé
+npm -v
+```
+
+---
+
+## Télécharger / ouvrir le projet
+
+L’archive **PayRollFlow.zip** contient le code source (README, frontend, backend, Docker). Elle **n’inclut pas** :
+
+- `node_modules/` (à installer avec `npm install`)
+- `.git/`
+- `frontend/.env` et `backend/.env` (secrets — copiez les `.env.example`)
+- `backend/data/store.json` (régénéré au premier `npm run dev`)
+
+### Windows (Explorateur)
+
+1. Clic droit sur `PayRollFlow.zip` → **Extraire tout…**
+2. Ouvrez le dossier extrait dans Cursor / VS Code.
+
+### PowerShell
+
+```powershell
+Expand-Archive .\PayRollFlow.zip -DestinationPath .\PayRollFlow
+cd .\PayRollFlow
+```
+
+### WSL (Ubuntu)
+
+```bash
+unzip PayRollFlow.zip -d ~/PayRollFlow
+cd ~/PayRollFlow
+```
+
+Arborescence attendue :
+
+```
+PayRollFlow/
+├── README.md
+├── docker-compose.yml
+├── .gitignore
+├── backend/          API + microservices
+│   ├── .env.example
+│   ├── package.json
+│   ├── Dockerfile
+│   └── src/
+└── frontend/         Interface web
+    ├── .env.example
+    ├── package.json
+    ├── Dockerfile
+    └── src/
+```
+
+Pour versionner le projet dans Git : créez le dépôt depuis l’interface Cursor (**Create repo**), puis clonez-le. En attendant, l’archive zip suffit.
+
+---
+
+## Variables d’environnement
+
+### Frontend — `frontend/.env`
+
+```bash
+cp frontend/.env.example frontend/.env
+```
+
+```env
+VITE_SUPABASE_URL=https://VOTRE_REF.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+```
+
+Cette clé **publishable** va dans le navigateur : c’est normal. Relancez Vite après toute modification des `VITE_*`.
+
+### Backend — `backend/.env`
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+```env
+SUPABASE_URL=https://VOTRE_REF.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+SUPABASE_SECRET_KEY=sb_secret_...
+```
+
+La clé **secret** ne doit **jamais** aller dans le frontend ni dans Git.
+
+| Mode | Quand | Comportement |
+| --- | --- | --- |
+| Local | `SUPABASE_URL` vide | Email + mot de passe vérifiés dans `store.json` (JWT local) |
+| Supabase | URL + publishable renseignés | Auth chez Supabase, puis rôle admin / employé rattaché à la fiche locale |
+
+Sans secret, le **login** fonctionne. La secret sert surtout à **créer un compte Auth** quand un admin ajoute un employé.
+
+### Projet de démo déjà branché
+
+Pour tester tout de suite avec le projet utilisé en développement :
+
+```env
+VITE_SUPABASE_URL=https://brohcfjzytrajqzhcchl.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_r823ijwDyX9uvYmPoJHSRA_mUcV4QMy
+```
+
+Même URL / publishable dans `backend/.env`. La secret se copie depuis **Supabase → Project Settings → API Keys** (publishable & secret).
+
+**Important :** l’URL et la clé publishable doivent appartenir au **même** projet. Une clé d’un autre projet donne `Invalid API key`.
+
+---
+
+## Lancer en local (recommandé)
+
+Deux terminaux, **depuis la racine du projet dézippé**.
+
+**Terminal 1 — API** (auth `:45231`, RH `:45232`, paie `:45233`, temps `:45234`, passerelle `:45218`)
 
 ```bash
 cd backend
@@ -57,19 +194,214 @@ npm install
 npm run dev
 ```
 
+Attendez les lignes du type `listening` / démarrage des 5 processus.
+
+**Terminal 2 — interface**
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-- Interface : http://127.0.0.1:45217
-- Passerelle : http://127.0.0.1:45218/api/health
+Puis ouvrez :
+
+| Service | URL |
+| --- | --- |
+| Application | http://127.0.0.1:45217 |
+| Login | http://127.0.0.1:45217/login |
+| Santé API | http://127.0.0.1:45218/api/health |
+
+Le frontend Vite proxifie `/api` vers la passerelle `45218`.
+
+Au premier démarrage, `backend/data/store.json` est créé (société ANTARES DS, employés, cycles **juillet / août 2026** calculés, **septembre** en brouillon).
+
+### Réinitialiser la démo
+
+**Admin → Paramètres → Réinitialiser la démo**
+
+Cela régénère `store.json` (pas les utilisateurs Supabase).
+
+---
 
 ## Docker
 
-Six images : `auth`, `hr`, `payroll`, `time`, `gateway`, `frontend`.
+À la racine du projet :
+
+```bash
+cp backend/.env.example .env
+# remplissez SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_SECRET_KEY
+docker compose up --build
+```
+
+- Interface : http://127.0.0.1:45217
+- API : http://127.0.0.1:45218
+
+Les clés frontend (`VITE_…`) sont injectées **au build** de l’image à partir de `SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY` du `.env` racine. Si vous changez Supabase, reconstruisez :
 
 ```bash
 docker compose up --build
 ```
+
+Arrêt : `docker compose down`. Les données JSON vivent dans le volume Docker `payroll-data`.
+
+---
+
+## Comptes de démonstration
+
+Pas d’inscription. Mot de passe unique pour tous les collaborateurs.
+
+| Rôle | Email | Mot de passe | Après connexion |
+| --- | --- | --- | --- |
+| Administrateur | `admin@payrollflow.demo` | `AdminHorizon2026!` | `/admin` |
+| Bulletin officiel (référence PDF) | `yao.lassidan@payrollflow.demo` | `Horizon2026!` | `/espace` → **Mes bulletins → août 2026** |
+| Directrice | `aminata.diallo@payrollflow.demo` | `Horizon2026!` | `/espace` |
+| Autres salariés | liste ci-dessous | `Horizon2026!` | `/espace` |
+
+**Autres emails démo :**
+
+- `jp.kouame@payrollflow.demo`
+- `fatou.ndiaye@payrollflow.demo`
+- `hugo.bernard@payrollflow.demo`
+- `aicha.traore@payrollflow.demo`
+- `lea.moreau@payrollflow.demo`
+- `omar.benali@payrollflow.demo`
+- `camille.roux@payrollflow.demo`
+- `kwame.mensah@payrollflow.demo`
+- `sofia.martins@payrollflow.demo`
+- `yanis.haddad@payrollflow.demo`
+- `ines.petit@payrollflow.demo`
+
+Ces comptes existent dans **Supabase Auth** du projet de démo (emails confirmés).
+
+Sur un **nouveau** projet Supabase :
+
+1. Authentication → Users → Add user (email confirmé)
+2. `app_metadata` : `{ "role": "admin" }` ou `{ "role": "employee" }`
+3. L’email doit correspondre à une fiche dans `store.json` (ou créez l’employé depuis l’admin)
+
+Sinon, laissez les variables Supabase vides et utilisez le **login local**.
+
+### Bulletin à l’identique du PDF
+
+1. Connectez-vous en `yao.lassidan@payrollflow.demo`
+2. **Mes bulletins → août 2026**
+3. **Imprimer / PDF**
+
+Société affichée : ANTARES DS, matricule **1212**, période **01/08/26 – 31/08/26**, net **704,88**.
+
+Côté admin : **Cycles de paie → août 2026 → bulletin de Yao Lassidan**.
+
+---
+
+## Architecture API
+
+```
+Navigateur :45217
+    └─ /api/*  →  passerelle :45218
+                     ├─ auth     :45231   POST /api/auth/login  GET /api/auth/me
+                     ├─ hr       :45232   employés, départements, profil
+                     ├─ payroll  :45233   cycles, bulletins, acomptes, settings, dashboard
+                     └─ time     :45234   congés, dossiers, notifications
+```
+
+Toutes les routes (sauf login / health) exigent `Authorization: Bearer <access_token Supabase>` (ou JWT local si Supabase n’est pas configuré).
+
+| Méthode | Chemin | Usage |
+| --- | --- | --- |
+| POST | `/api/auth/login` | Email + mot de passe |
+| GET | `/api/auth/me` | Session courante |
+| GET/POST/PUT | `/api/employees` | Fiches RH (admin) |
+| POST | `/api/employees/import` | Import CSV |
+| GET/POST | `/api/payroll/periods` | Cycles |
+| POST | `/api/payroll/periods/:id/calculate` | Calcul des bulletins |
+| POST | `/api/payroll/periods/:id/validate` | Validation |
+| POST | `/api/payroll/periods/:id/pay` | Paiement |
+| GET | `/api/payroll/periods/:id/export` | CSV virements |
+| GET | `/api/payroll/payslips/:id` | Bulletin officiel |
+| GET/PUT | `/api/settings` | Société + barème |
+| POST | `/api/settings/reset` | Reset démo |
+| GET/POST | `/api/leaves` | Congés |
+| GET/POST | `/api/advances` | Acomptes |
+| GET | `/api/documents` | Dossier RH |
+| GET | `/api/notifications` | Cloche |
+
+Exemple de login (login local ou Supabase selon `.env`) :
+
+```bash
+curl -s http://127.0.0.1:45218/api/health
+curl -s -X POST http://127.0.0.1:45218/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"admin@payrollflow.demo","password":"AdminHorizon2026!"}'
+```
+
+### Import CSV employés
+
+En-têtes :
+
+```text
+firstName,lastName,email,phone,departmentCode,jobTitle,contractType,hireDate,baseSalary,iban,city,country
+```
+
+Codes département démo : `DG`, `RH`, `ING`, `OPS`, `FIN`, `CDP`.
+
+---
+
+## Bulletin officiel (données)
+
+Le moteur reprend la structure d’un bulletin français :
+
+- En-tête : période, paiement, matricule, ancienneté
+- Employeur : adresse, SIRET, APE/NAF, convention, indice, coef, horaire
+- Salarié : civilité, adresse, n° sécu, emploi, département, catégorie
+- Colonnes : Désignation / Nombre / Base / Taux salarial / Gain / Retenue / Part employeur
+- Blocs SANTE, RETRAITE, famille, chômage, CSG, allègement Fillon
+- Indemnités repas, compteurs de congés, NET A PAYER, PAS, cumuls période / année
+
+Les champs société se règlent dans **Paramètres**. Les champs individuels (matricule, n° sécu, tickets repas, taux PAS) sont sur la fiche employé.
+
+---
+
+## Scripts npm
+
+**Backend** (`backend/package.json`)
+
+- `npm run dev` — auth + hr + paie + temps + gateway (watch)
+- `npm run build` — `tsc --noEmit`
+
+**Frontend** (`frontend/package.json`)
+
+- `npm run dev` — Vite, port **45217**
+- `npm run build` — build production
+- `npm run lint` — oxlint
+
+---
+
+## Dépannage
+
+| Problème | Piste |
+| --- | --- |
+| Page blanche / login infini | `frontend/.env` manquant ou mal lu : relancer Vite après modification des `VITE_*` |
+| `Invalid API key` | URL Supabase et clé publishable ne sont pas du **même** projet |
+| `Email ou mot de passe incorrect` | Compte absent dans Supabase Auth, ou email non confirmé — ou mot de passe différent du tableau ci-dessus |
+| `Service indisponible` | L’API n’est pas démarrée (`cd backend && npm run dev`) |
+| Port déjà utilisé | Changer le port Vite dans `frontend/vite.config.ts` (45217) ou tuer le processus qui occupe le port |
+| Données bizarres | Admin → Paramètres → Réinitialiser la démo |
+| Windows, `npm` introuvable | Installer Node **dans WSL**, lancer les commandes depuis Ubuntu |
+| `unzip` introuvable (WSL) | `sudo apt update && sudo apt install unzip` |
+| Docker : frontend sans login Supabase | Les `VITE_*` sont figés au `docker compose up --build` : reconstruire après changement de `.env` |
+
+---
+
+## Stack
+
+- Frontend : React 19, Vite 8, TypeScript, Tailwind 4, shadcn/ui, React Router 7, `@supabase/supabase-js`
+- Backend : Node 22, Express 5, Zod, JWT local (secours), Supabase Auth
+- Données locales : JSON (`backend/data/store.json`), pas de Postgres applicatif (Supabase = Auth uniquement dans cette version)
+- Conteneurs : Docker Compose, Node 22 Alpine (API), Nginx (frontend)
+
+---
+
+## Licence / usage
+
+Projet de démonstration interne. Les n° SIRET / sécu / IBAN du jeu de données sont **fictifs** (modèle de bulletin).
