@@ -44,7 +44,8 @@ createService("payrollflow-auth", port, (app) => {
         return;
       }
       recordLoginSuccess(req);
-      res.json({ token: data.session.access_token, user: publicUser(user), provider: "supabase" });
+      setAuthCookie(res, signToken(user));
+      res.json({ user: publicUser(user), provider: "supabase" });
       return;
     }
 

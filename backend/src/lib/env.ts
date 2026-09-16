@@ -35,5 +35,11 @@ if (JWT_SECRET_IS_DEFAULT) {
 }
 
 export function supabaseConfigured(): boolean {
-  return Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY);
+  if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) return false;
+  if (/YOUR_PROJECT_REF|sb_publishable_\.\.\./i.test(`${SUPABASE_URL}${SUPABASE_PUBLISHABLE_KEY}`)) return false;
+  try {
+    return new URL(SUPABASE_URL).hostname.endsWith("supabase.co");
+  } catch {
+    return false;
+  }
 }

@@ -163,8 +163,10 @@ La clé **secret** ne doit **jamais** aller dans le frontend ni dans Git. `JWT_S
 
 | Mode | Quand | Comportement |
 | --- | --- | --- |
-| Local | `SUPABASE_URL` vide | Email + mot de passe dans `store.json`, JWT dans un cookie `httpOnly` (pas de token dans le JSON ni dans `localStorage`) |
-| Supabase | URL + publishable renseignés | Auth chez Supabase, puis rôle admin / employé rattaché à la fiche locale |
+| Local | `SUPABASE_URL` vide | Email + mot de passe dans `store.json` |
+| Supabase | URL + publishable renseignés | Mot de passe vérifié chez Supabase, rôle admin / employé rattaché à la fiche locale |
+
+Dans les deux cas, la session navigateur est un cookie `httpOnly` (pas de jeton dans `localStorage`).
 
 Sans secret, le **login** fonctionne. La secret sert surtout à **créer un compte Auth** quand un admin ajoute un employé.
 
@@ -306,7 +308,7 @@ Navigateur :45217
                      └─ time     :45234   congés, dossiers, notifications
 ```
 
-Toutes les routes (sauf login / health) exigent `Authorization: Bearer <access_token Supabase>` **ou** le cookie httpOnly `payrollflow_token` (mode JWT local). 5 échecs de login sur 15 min (IP + email) → HTTP 429.
+Toutes les routes (sauf login / health) exigent le cookie httpOnly `payrollflow_token` (posé à la connexion, y compris si Supabase vérifie le mot de passe). 5 échecs de login sur 15 min (IP + email) → HTTP 429.
 
 | Méthode | Chemin | Usage |
 | --- | --- | --- |
@@ -336,8 +338,6 @@ curl -c /tmp/pf.jar -s -X POST http://127.0.0.1:45218/api/auth/login \
   -d '{"email":"admin@payrollflow.demo","password":"AdminHorizon2026!"}'
 curl -b /tmp/pf.jar -s http://127.0.0.1:45218/api/auth/me
 ```
-
-Si Supabase est configuré, le login renvoie un `access_token` à passer en `Authorization: Bearer`.
 
 ### Import CSV employés
 
@@ -388,7 +388,7 @@ Les champs société se règlent dans **Paramètres**. Les champs individuels (m
 | Page blanche / login infini | `frontend/.env` manquant ou mal lu : relancer Vite après modification des `VITE_*` |
 | `Invalid API key` | URL Supabase et clé publishable ne sont pas du **même** projet |
 | `Email ou mot de passe incorrect` | Compte absent dans Supabase Auth, ou email non confirmé — ou mot de passe différent du tableau ci-dessus |
-| `Trop de tentatives` (429) | 5 échecs en 15 min : attendre le délai indiqué (IP + email) |
+| `Session expirée` | Ancien jeton / cookie : déconnectez-vous, videz les cookies du site, relancez `npm run dev` (backend + frontend), reconnectez-vous |
 | `Service indisponible` | L’API n’est pas démarrée (`cd backend && npm run dev`) |
 | Port déjà utilisé | Changer le port Vite dans `frontend/vite.config.ts` (45217) ou tuer le processus qui occupe le port |
 | Données bizarres | Admin → Paramètres → Réinitialiser la démo |
@@ -403,7 +403,7 @@ Les champs société se règlent dans **Paramètres**. Les champs individuels (m
 - Frontend : React 19, Vite 8, TypeScript, Tailwind 4, shadcn/ui, React Router 7, `@supabase/supabase-js`
 - Backend : Node 22, Express 5, Zod, JWT local (secours), Supabase Auth
 - Données locales : JSON (`backend/data/store.json`) avec verrou de fichier entre microservices
-- Auth locale : JWT dans un cookie `httpOnly` (pas de token dans `localStorage`) ; mode Supabase : session gérée par `@supabase/supabase-js`
+- Auth : mot de passe vérifié en local ou chez Supabase, puis session dans un cookie `httpOnly` (pas de token dans `localStorage`)
 - Conteneurs : Docker Compose, Node 22 Alpine (API), Nginx (frontend)
 
 ---

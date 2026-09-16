@@ -43,13 +43,13 @@ function cookieHeader(token: string, maxAgeSec: number): string {
 }
 
 export function setAuthCookie(res: Response, token: string): void {
-  res.setHeader("Set-Cookie", cookieHeader(token, 12 * 60 * 60));
+  res.append("Set-Cookie", cookieHeader(token, 12 * 60 * 60));
 }
 
 export function clearAuthCookie(res: Response): void {
   const parts = [`${AUTH_COOKIE}=`, "Path=/", "HttpOnly", "SameSite=Lax", "Max-Age=0"];
   if (process.env.NODE_ENV === "production") parts.push("Secure");
-  res.setHeader("Set-Cookie", parts.join("; "));
+  res.append("Set-Cookie", parts.join("; "));
 }
 
 export function tokenFromRequest(req: Request): string | null {
@@ -105,18 +105,20 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     res.status(401).json({ error: "Connexion requise" });
     return;
   }
+  try {
+    (req as Request & { user?: TokenUser }).user = jwt.verify(token, JWT_SECRET) as TokenUser;
+    next();
+    return;
+  } catch {
+    /* jeton Supabase ou JWT local invalide */
+  }
   const supabaseUser = await resolveSupabaseUser(token);
   if (supabaseUser) {
     (req as Request & { user?: TokenUser }).user = supabaseUser;
     next();
     return;
   }
-  try {
-    (req as Request & { user?: TokenUser }).user = jwt.verify(token, JWT_SECRET) as TokenUser;
-    next();
-  } catch {
-    res.status(401).json({ error: "Session expirée" });
-  }
+  res.status(401).json({ error: "Session expirée" });
 }
 
 export async function requireAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {

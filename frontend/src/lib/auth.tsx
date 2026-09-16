@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "@/lib/api";
-import { supabase } from "@/lib/supabase";
 
 export type SessionUser = {
   id: string;
@@ -25,29 +24,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-
-    async function hydrateFromApi() {
-      try {
-        const me = await api<SessionUser>("/api/auth/me");
+    void api<SessionUser>("/api/auth/me")
+      .then((me) => {
         if (!cancelled) setUser(me);
-      } catch {
+      })
+      .catch(() => {
         if (!cancelled) setUser(null);
-      } finally {
+      })
+      .finally(() => {
         if (!cancelled) setLoading(false);
-      }
-    }
-
-    if (supabase) {
-      const { data } = supabase.auth.onAuthStateChange(() => {
-        void hydrateFromApi();
       });
-      return () => {
-        cancelled = true;
-        data.subscription.unsubscribe();
-      };
-    }
-
-    void hydrateFromApi();
     return () => {
       cancelled = true;
     };
@@ -58,24 +44,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       async login(email, password) {
-        if (supabase) {
-          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-          if (error || !data.session?.access_token) {
-            throw new Error(error?.message || "Email ou mot de passe incorrect");
-          }
-        } else {
-          await api<{ user: SessionUser; provider: string }>("/api/auth/login", {
-            method: "POST",
-            body: JSON.stringify({ email, password }),
-          });
-        }
+        await api("/api/auth/login", {
+          method: "POST",
+          body: JSON.stringify({ email, password }),
+        });
         const me = await api<SessionUser>("/api/auth/me");
         setUser(me);
         return me;
       },
       logout() {
         setUser(null);
-        void supabase?.auth.signOut();
         void api("/api/auth/logout", { method: "POST" }).catch(() => undefined);
       },
     }),

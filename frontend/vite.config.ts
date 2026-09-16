@@ -18,6 +18,7 @@ export default defineConfig({
         target: "http://127.0.0.1:45218",
         changeOrigin: true,
         xfwd: true,
+        cookieDomainRewrite: "",
       },
     },
   },
