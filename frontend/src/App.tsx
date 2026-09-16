@@ -16,6 +16,8 @@ import { DocumentsPage } from "@/pages/documents";
 import { LeavesPage } from "@/pages/leaves";
 import { LoginPage } from "@/pages/login";
 import { PayrollPage } from "@/pages/payroll";
+import { PayslipCalcPage } from "@/pages/payslip-calc";
+import { NetworkPage } from "@/pages/network";
 import { PayslipPage } from "@/pages/payslip";
 import { PeriodDetailPage } from "@/pages/period-detail";
 import { SettingsPage } from "@/pages/settings";
@@ -56,6 +58,8 @@ export default function App() {
           <Route path="/admin/employes/:id" element={<AdminShell><EmployeeDetailPage /></AdminShell>} />
           <Route path="/admin/departements" element={<AdminShell><DepartmentsPage /></AdminShell>} />
           <Route path="/admin/paie" element={<AdminShell><PayrollPage /></AdminShell>} />
+          <Route path="/admin/calcul" element={<AdminShell><PayslipCalcPage /></AdminShell>} />
+          <Route path="/admin/reseau" element={<AdminShell><NetworkPage /></AdminShell>} />
           <Route path="/admin/paie/:id" element={<AdminShell><PeriodDetailPage /></AdminShell>} />
           <Route path="/admin/bulletins/:id" element={<AdminShell><PayslipPage /></AdminShell>} />
           <Route path="/admin/conges" element={<AdminShell><LeavesPage /></AdminShell>} />

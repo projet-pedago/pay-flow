@@ -257,3 +257,98 @@ export type PeriodSuggestion = {
   advance: number;
   leaveLabel: string | null;
 };
+
+export type NetworkPartnerKind =
+  | "internal"
+  | "internal_client"
+  | "freelance"
+  | "auto_entrepreneur"
+  | "contractor"
+  | "temp"
+  | "portage"
+  | "intern";
+
+export type NetworkClient = {
+  id: string;
+  kind: "internal" | "external";
+  name: string;
+  siret: string;
+  city: string;
+  contact: string;
+  email: string;
+  notes: string;
+};
+
+export type NetworkPartner = {
+  id: string;
+  kind: NetworkPartnerKind;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  jobTitle: string;
+  employeeId?: string;
+  clientId?: string;
+  companyName: string;
+  dailyRate: number;
+  vatRate: number;
+  status: "active" | "ended";
+  notes: string;
+  createdAt: string;
+};
+
+export type NetworkInvoice = {
+  id: string;
+  direction: "receivable" | "payable";
+  clientId: string;
+  partnerId?: string;
+  number: string;
+  date: string;
+  label: string;
+  amountHt: number;
+  vatRate: number;
+  status: "draft" | "sent" | "paid";
+  createdAt: string;
+};
+
+export type PartnerCatalogItem = {
+  kind: NetworkPartnerKind;
+  label: string;
+  payroll: string;
+  billing: string;
+  summary: string;
+};
+
+export type NetworkPayload = {
+  clients: NetworkClient[];
+  partners: NetworkPartner[];
+  invoices: NetworkInvoice[];
+  employees: { id: string; name: string; jobTitle: string }[];
+  summary: {
+    partners: number;
+    activePartners: number;
+    clients: number;
+    invoices: number;
+    billedHt: number;
+    billedTtc: number;
+    costsHt: number;
+    costsTtc: number;
+    outstanding: number;
+  };
+  catalog: PartnerCatalogItem[];
+};
+
+export type CalcStep = {
+  id: string;
+  title: string;
+  formula: string;
+  value: number;
+  hint: string;
+};
+
+export type PayslipPreview = {
+  employee: Employee;
+  settings: Settings;
+  payslip: Payslip;
+  steps: CalcStep[];
+};

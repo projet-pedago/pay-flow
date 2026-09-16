@@ -56,6 +56,17 @@ export function DashboardPage() {
         ) : null}
       </div>
 
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Link to="/admin/calcul" className="rounded-3xl border border-ink/10 bg-white px-5 py-4 hover:border-sage/40">
+          <p className="text-sm font-semibold">Comment se calcule un bulletin</p>
+          <p className="mt-1 text-sm text-ink/55">Prorata, cotisations, Fillon, tickets, PAS — simulation sur un salarié.</p>
+        </Link>
+        <Link to="/admin/reseau" className="rounded-3xl border border-ink/10 bg-white px-5 py-4 hover:border-sage/40">
+          <p className="text-sm font-semibold">Nouveaux collaborateurs & factures</p>
+          <p className="mt-1 text-sm text-ink/55">Salariés, clients internes, freelances, missions facturées à d’autres entreprises.</p>
+        </Link>
+      </div>
+
       {data.anomalies && data.anomalies.length > 0 ? (
         <Card>
           <CardHeader>

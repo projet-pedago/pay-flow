@@ -3,7 +3,7 @@ import { closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, s
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Store } from "../types.js";
-import { buildUsers, createSeed } from "./seed.js";
+import { buildNetwork, buildUsers, createSeed } from "./seed.js";
 
 const dataDir = process.env.DATA_DIR ?? join(dirname(fileURLToPath(import.meta.url)), "../../data");
 const storePath = join(dataDir, "store.json");
@@ -86,6 +86,13 @@ function readAndMigrate(): Store {
   }
   if (!Array.isArray(store.notifications)) {
     store.notifications = [];
+    dirty = true;
+  }
+  if (!Array.isArray(store.clients) || !store.clients.length) {
+    const network = buildNetwork();
+    store.clients = network.clients;
+    store.partners = network.partners;
+    store.invoices = network.invoices;
     dirty = true;
   }
   if (store.settings.advanceCapRatio == null) {

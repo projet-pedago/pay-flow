@@ -71,6 +71,7 @@ app.get("/api/health", async (_req, res) => {
 app.use("/api/auth", proxyTo(AUTH_URL));
 app.use("/api/employees", proxyTo(HR_URL));
 app.use("/api/departments", proxyTo(HR_URL));
+app.use("/api/network", proxyTo(HR_URL));
 app.use("/api/me/profile", proxyTo(HR_URL));
 app.use("/api/me/payslips", proxyTo(PAYROLL_URL));
 app.use("/api/me/summary", proxyTo(PAYROLL_URL));

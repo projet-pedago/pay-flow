@@ -216,4 +216,63 @@ export type Store = {
   advances: SalaryAdvance[];
   documents: HrDocument[];
   notifications: AppNotification[];
+  clients: NetworkClient[];
+  partners: NetworkPartner[];
+  invoices: NetworkInvoice[];
+};
+
+export type NetworkClientKind = "internal" | "external";
+export type NetworkPartnerKind =
+  | "internal"
+  | "internal_client"
+  | "freelance"
+  | "auto_entrepreneur"
+  | "contractor"
+  | "temp"
+  | "portage"
+  | "intern";
+export type InvoiceDirection = "receivable" | "payable";
+export type InvoiceStatus = "draft" | "sent" | "paid";
+
+export type NetworkClient = {
+  id: string;
+  kind: NetworkClientKind;
+  name: string;
+  siret: string;
+  city: string;
+  contact: string;
+  email: string;
+  notes: string;
+};
+
+export type NetworkPartner = {
+  id: string;
+  kind: NetworkPartnerKind;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  jobTitle: string;
+  employeeId?: string;
+  clientId?: string;
+  companyName: string;
+  dailyRate: number;
+  vatRate: number;
+  status: "active" | "ended";
+  notes: string;
+  createdAt: string;
+};
+
+export type NetworkInvoice = {
+  id: string;
+  direction: InvoiceDirection;
+  clientId: string;
+  partnerId?: string;
+  number: string;
+  date: string;
+  label: string;
+  amountHt: number;
+  vatRate: number;
+  status: InvoiceStatus;
+  createdAt: string;
 };

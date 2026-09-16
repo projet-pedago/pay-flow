@@ -1,4 +1,4 @@
-import { Banknote, Building2, CalendarDays, FolderOpen, LayoutDashboard, LogOut, Menu, Settings2, Users, Wallet, X } from "lucide-react";
+import { Banknote, Building2, Calculator, CalendarDays, FolderOpen, LayoutDashboard, LogOut, Menu, Network, Settings2, Users, Wallet, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { NotificationBell } from "@/components/notification-bell";
@@ -11,6 +11,8 @@ const links = [
   { to: "/admin/employes", label: "Employés", icon: Users },
   { to: "/admin/departements", label: "Départements", icon: Building2 },
   { to: "/admin/paie", label: "Cycles de paie", icon: Wallet },
+  { to: "/admin/calcul", label: "Calcul bulletin", icon: Calculator },
+  { to: "/admin/reseau", label: "Réseau & factures", icon: Network },
   { to: "/admin/conges", label: "Congés", icon: CalendarDays },
   { to: "/admin/acomptes", label: "Acomptes", icon: Banknote },
   { to: "/admin/dossiers", label: "Dossiers RH", icon: FolderOpen },

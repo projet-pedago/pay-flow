@@ -44,6 +44,8 @@ Sans fichiers `.env`, le login utilise le **jeu local** (JSON + mots de passe ha
 ### Console administrateur (`/admin`)
 
 - Pilotage (KPI, alertes, anomalies)
+- **Calcul du bulletin** : simulation pas à pas (prorata, cotisations, Fillon, PAS)
+- **Réseau & factures** : salariés internes, clients internes, entreprises facturées, freelances, intérim, portage
 - Employés (fiche RH, matricule, n° sécu, horaire, tickets repas, import CSV)
 - Départements
 - Cycles de paie (brouillon → calcul → validation → paiement)
