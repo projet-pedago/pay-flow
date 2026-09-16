@@ -9,10 +9,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { FadeIn, MotionItem, Stagger, staggerItem } from "@/components/fade-in";
 import { ErrorState, LoadingState } from "@/components/states";
 import { PeriodBadge } from "@/components/status-badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { monthLabel, money, statusLabel } from "@/lib/format";
+import { photos } from "@/lib/media";
 import type { DashboardData } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
 
@@ -32,83 +34,95 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold tracking-[0.2em] text-sage uppercase">{data.settings.companyName}</p>
-          <h2 className="font-display mt-1 text-3xl sm:text-4xl">Vue paie en temps réel</h2>
-          <p className="mt-2 max-w-2xl text-sm text-ink/60">
-            {data.settings.companyCity} · les indicateurs se mettent à jour dès qu’un cycle est calculé, validé ou payé.
-          </p>
-        </div>
-        {data.kpiPeriod ? (
-          <div className="rounded-2xl border border-ink/10 bg-white px-4 py-3">
-            <p className="text-xs text-ink/50">Indicateurs basés sur</p>
-            <div className="mt-1 flex items-center gap-2">
-              <span className="font-semibold capitalize">{monthLabel(data.kpiPeriod.year, data.kpiPeriod.month)}</span>
-              <PeriodBadge status={data.kpiPeriod.status} />
-            </div>
-            {data.latestPeriod && data.latestPeriod.id !== data.kpiPeriod.id ? (
-              <p className="mt-2 text-xs text-ink/45">
-                Cycle ouvert : {monthLabel(data.latestPeriod.year, data.latestPeriod.month)} ({statusLabel(data.latestPeriod.status)})
-              </p>
-            ) : null}
+      <FadeIn className="relative overflow-hidden rounded-3xl aurora px-6 py-8 text-white sm:px-8">
+        <img src={photos.payroll} alt="" className="absolute inset-0 h-full w-full object-cover opacity-20" />
+        <div className="grid-fade absolute inset-0" />
+        <div className="relative flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold tracking-[0.2em] text-gold uppercase">{data.settings.companyName}</p>
+            <h2 className="font-display mt-1 text-3xl sm:text-4xl">Vue paie en temps réel</h2>
+            <p className="mt-2 max-w-2xl text-sm text-white/70">
+              {data.settings.companyCity} · les indicateurs se mettent à jour dès qu’un cycle est calculé, validé ou payé.
+            </p>
           </div>
-        ) : null}
-      </div>
+          {data.kpiPeriod ? (
+            <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm">
+              <p className="text-xs text-white/60">Indicateurs basés sur</p>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="font-semibold capitalize">{monthLabel(data.kpiPeriod.year, data.kpiPeriod.month)}</span>
+                <PeriodBadge status={data.kpiPeriod.status} />
+              </div>
+              {data.latestPeriod && data.latestPeriod.id !== data.kpiPeriod.id ? (
+                <p className="mt-2 text-xs text-white/50">
+                  Cycle ouvert : {monthLabel(data.latestPeriod.year, data.latestPeriod.month)} ({statusLabel(data.latestPeriod.status)})
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </FadeIn>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Link to="/admin/calcul" className="rounded-3xl border border-ink/10 bg-white px-5 py-4 hover:border-sage/40">
-          <p className="text-sm font-semibold">Comment se calcule un bulletin</p>
-          <p className="mt-1 text-sm text-ink/55">Prorata, cotisations, Fillon, tickets, PAS — simulation sur un salarié.</p>
-        </Link>
-        <Link to="/admin/reseau" className="rounded-3xl border border-ink/10 bg-white px-5 py-4 hover:border-sage/40">
-          <p className="text-sm font-semibold">Nouveaux collaborateurs & factures</p>
-          <p className="mt-1 text-sm text-ink/55">Salariés, clients internes, freelances, missions facturées à d’autres entreprises.</p>
-        </Link>
-      </div>
+      <Stagger className="grid gap-3 sm:grid-cols-2">
+        <MotionItem variants={staggerItem}>
+          <Link to="/admin/calcul" className="block rounded-3xl border border-ink/10 bg-white px-5 py-4 transition hover:border-sage/40 hover:shadow-sm">
+            <p className="text-sm font-semibold">Comment se calcule un bulletin</p>
+            <p className="mt-1 text-sm text-ink/55">Prorata, cotisations, Fillon, tickets, PAS — simulation sur un salarié.</p>
+          </Link>
+        </MotionItem>
+        <MotionItem variants={staggerItem}>
+          <Link to="/admin/reseau" className="block rounded-3xl border border-ink/10 bg-white px-5 py-4 transition hover:border-sage/40 hover:shadow-sm">
+            <p className="text-sm font-semibold">Nouveaux collaborateurs & factures</p>
+            <p className="mt-1 text-sm text-ink/55">Salariés, clients internes, freelances, missions facturées à d’autres entreprises.</p>
+          </Link>
+        </MotionItem>
+      </Stagger>
 
       {data.anomalies && data.anomalies.length > 0 ? (
-        <Card>
-          <CardHeader>
-            <div>
-              <h3 className="font-display text-xl">Centre de conformité</h3>
-              <p className="text-sm text-ink/50">Les points que les leaders du marché (PayFit, ADP, Sage) traitent avant un virement.</p>
-            </div>
-          </CardHeader>
-          <CardContent className="grid gap-2">
-            {data.anomalies.map((item) => (
-              <Link
-                key={item.title}
-                to={item.link}
-                className="rounded-2xl border border-ink/8 px-4 py-3 hover:bg-paper"
-              >
-                <p className="text-sm font-semibold">{item.title}</p>
-                <p className="text-xs text-ink/55">{item.detail}</p>
-              </Link>
-            ))}
-          </CardContent>
-        </Card>
+        <FadeIn delay={0.08}>
+          <Card>
+            <CardHeader>
+              <div>
+                <h3 className="font-display text-xl">Centre de conformité</h3>
+                <p className="text-sm text-ink/50">Les points que les leaders du marché (PayFit, ADP, Sage) traitent avant un virement.</p>
+              </div>
+            </CardHeader>
+            <CardContent className="grid gap-2">
+              {data.anomalies.map((item) => (
+                <Link
+                  key={item.title}
+                  to={item.link}
+                  className="rounded-2xl border border-ink/8 px-4 py-3 hover:bg-paper"
+                >
+                  <p className="text-sm font-semibold">{item.title}</p>
+                  <p className="text-xs text-ink/55">{item.detail}</p>
+                </Link>
+              ))}
+            </CardContent>
+          </Card>
+        </FadeIn>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <Stagger className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
           return (
-            <Card key={kpi.label}>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-ink/55">{kpi.label}</p>
-                  <Icon className="h-4 w-4 text-sage" />
-                </div>
-                <p className="font-display text-3xl">{kpi.value}</p>
-                <p className="text-xs text-ink/45">{kpi.hint}</p>
-              </CardContent>
-            </Card>
+            <MotionItem key={kpi.label} variants={staggerItem}>
+              <Card>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-ink/55">{kpi.label}</p>
+                    <Icon className="h-4 w-4 text-sage" />
+                  </div>
+                  <p className="font-display text-3xl">{kpi.value}</p>
+                  <p className="text-xs text-ink/45">{kpi.hint}</p>
+                </CardContent>
+              </Card>
+            </MotionItem>
           );
         })}
-      </div>
+      </Stagger>
 
-      <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
+      <FadeIn delay={0.12} className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
         <Card>
           <CardHeader>
             <div>
@@ -156,29 +170,31 @@ export function DashboardPage() {
             })}
           </CardContent>
         </Card>
-      </div>
+      </FadeIn>
 
-      <Card>
-        <CardHeader>
-          <h3 className="font-display text-xl">Répartition des effectifs</h3>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {data.byDepartment.map((department) => (
-            <Link
-              key={department.id}
-              to="/admin/departements"
-              className="rounded-2xl border border-ink/8 bg-paper px-4 py-3 transition hover:-translate-y-0.5"
-            >
-              <div className="mb-2 flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ background: department.color }} />
-                <span className="text-sm font-medium">{department.name}</span>
-              </div>
-              <p className="font-display text-2xl">{department.headcount}</p>
-              <p className="text-xs text-ink/45">personnes</p>
-            </Link>
-          ))}
-        </CardContent>
-      </Card>
+      <FadeIn delay={0.16}>
+        <Card>
+          <CardHeader>
+            <h3 className="font-display text-xl">Répartition des effectifs</h3>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {data.byDepartment.map((department) => (
+              <Link
+                key={department.id}
+                to="/admin/departements"
+                className="rounded-2xl border border-ink/8 bg-paper px-4 py-3 transition hover:-translate-y-0.5"
+              >
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: department.color }} />
+                  <span className="text-sm font-medium">{department.name}</span>
+                </div>
+                <p className="font-display text-2xl">{department.headcount}</p>
+                <p className="text-xs text-ink/45">personnes</p>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+      </FadeIn>
     </div>
   );
 }

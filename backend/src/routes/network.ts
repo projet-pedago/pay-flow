@@ -84,6 +84,7 @@ const clientSchema = z.object({
   city: z.string().optional().default(""),
   contact: z.string().optional().default(""),
   email: z.string().optional().default(""),
+  website: z.string().optional().default(""),
   notes: z.string().optional().default(""),
 });
 

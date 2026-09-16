@@ -242,6 +242,7 @@ export type NetworkClient = {
   city: string;
   contact: string;
   email: string;
+  website?: string;
   notes: string;
 };
 

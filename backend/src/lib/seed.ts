@@ -355,6 +355,7 @@ export function buildNetwork() {
       city: "Levallois-Perret",
       contact: "Fatou Ndiaye",
       email: "cdp.interne@payrollflow.demo",
+      website: "",
       notes: "Client interne : refacturation des techniciens inventaire vers le pôle CDP.",
     },
     {
@@ -365,6 +366,7 @@ export function buildNetwork() {
       city: "Lyon",
       contact: "Élodie Marin",
       email: "achats@nordsoft.demo",
+      website: "https://www.ovhcloud.com",
       notes: "Client externe : missions régie cloud facturées au TJM.",
     },
     {
@@ -375,6 +377,7 @@ export function buildNetwork() {
       city: "Gentilly",
       contact: "Service informatique",
       email: "dsi@gentilly.demo",
+      website: "https://www.ville-gentilly.fr",
       notes: "Marché public d’inventaire parc — facturation mensuelle.",
     },
   ];

@@ -36,7 +36,7 @@ Sans fichiers `.env`, le login utilise le **jeu local** (JSON + mots de passe ha
 
 | Partie | Dossier | Rôle |
 | --- | --- | --- |
-| Interface | `frontend/` | React 19 + Vite + TypeScript + Tailwind + shadcn/ui |
+| Interface | `frontend/` | React 19 + Vite + TypeScript + Tailwind + shadcn/ui + Framer Motion |
 | API | `backend/` | Express 5, 4 microservices + passerelle |
 | Données démo | `backend/data/store.json` | Créé automatiquement au premier lancement |
 | Docker | `docker-compose.yml` | 6 images (auth, hr, payroll, time, gateway, frontend) |
@@ -64,6 +64,22 @@ Sans fichiers `.env`, le login utilise le **jeu local** (JSON + mots de passe ha
 - Demandes d’acompte
 - Dossier RH (CNI, RIB, contrat, Vitale)
 - Profil (téléphone, ville, IBAN)
+
+### Stack visuelle (sans Next.js)
+
+PayRollFlow reste sur **Vite + React**. Les ressources visuelles utilisées :
+
+| Besoin | Source | Clé API |
+| --- | --- | --- |
+| Composants | shadcn/ui (Button, Card, Dialog, Input…) | Non |
+| Icônes UI | Lucide | Non |
+| Logos technologies | [Simple Icons](https://cdn.simpleicons.org) | Non |
+| Logos entreprises / partenaires | Favicon du domaine (Google) | Non |
+| Photos (login, accueil) | [Unsplash](https://unsplash.com) en URL directe | Non |
+| Animations | Framer Motion (apparition, cartes, respect `prefers-reduced-motion`) | Non |
+| Fonds lumineux | CSS aurora + grille (style Aceternity, sans librairie) | Non |
+
+Logo.dev, Pexels, LottieFiles et Aceternity UI complet restent optionnels : ils demandent souvent une clé ou un copier-coller de composants. Ici, le rendu professionnel tient avec des sources gratuites.
 
 ---
 

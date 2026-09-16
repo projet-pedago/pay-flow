@@ -32,6 +32,27 @@ body {
   color: var(--color-ink);
 }
 
+.aurora {
+  background:
+    radial-gradient(900px 420px at 12% -10%, rgba(196, 165, 116, 0.28), transparent 55%),
+    radial-gradient(700px 380px at 90% 10%, rgba(31, 111, 91, 0.35), transparent 50%),
+    linear-gradient(165deg, #0c2a22 0%, #0f3d32 48%, #16382f 100%);
+}
+
+.grid-fade {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(ellipse at center, black 40%, transparent 75%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+}
+
 #root {
   width: 100%;
 }

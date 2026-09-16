@@ -1,5 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { BrandLogo } from "@/components/brand-logo";
+import { FadeIn, MotionItem, Stagger, staggerItem } from "@/components/fade-in";
 import { ErrorState, LoadingState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { api } from "@/lib/api";
 import { moneyExact } from "@/lib/format";
+import { hostFromUrl } from "@/lib/media";
 import type {
   NetworkClient,
   NetworkInvoice,
@@ -47,20 +50,28 @@ export function NetworkPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <FadeIn>
         <h2 className="font-display text-3xl sm:text-4xl">Réseau & facturation</h2>
         <p className="mt-2 max-w-2xl text-sm text-ink/60">
           Tout le monde n’est pas sur un bulletin. Ici : salariés internes, clients internes, missions facturées à
           d’autres entreprises, freelances, intérim, portage…
         </p>
-      </div>
+      </FadeIn>
 
-      <div className="grid gap-3 sm:grid-cols-4">
-        <Kpi label="Collaborateurs" value={String(data.summary.activePartners)} hint={`${data.summary.partners} fiches`} />
-        <Kpi label="Clients" value={String(data.summary.clients)} hint="Internes + entreprises" />
-        <Kpi label="Facturé HT" value={moneyExact(data.summary.billedHt)} hint="Émis vers d’autres sociétés" />
-        <Kpi label="Honoraires HT" value={moneyExact(data.summary.costsHt)} hint="Freelances / prestataires" />
-      </div>
+      <Stagger className="grid gap-3 sm:grid-cols-4">
+        <MotionItem variants={staggerItem}>
+          <Kpi label="Collaborateurs" value={String(data.summary.activePartners)} hint={`${data.summary.partners} fiches`} />
+        </MotionItem>
+        <MotionItem variants={staggerItem}>
+          <Kpi label="Clients" value={String(data.summary.clients)} hint="Internes + entreprises" />
+        </MotionItem>
+        <MotionItem variants={staggerItem}>
+          <Kpi label="Facturé HT" value={moneyExact(data.summary.billedHt)} hint="Émis vers d’autres sociétés" />
+        </MotionItem>
+        <MotionItem variants={staggerItem}>
+          <Kpi label="Honoraires HT" value={moneyExact(data.summary.costsHt)} hint="Freelances / prestataires" />
+        </MotionItem>
+      </Stagger>
 
       <div className="flex flex-wrap gap-2">
         {(
@@ -86,18 +97,20 @@ export function NetworkPage() {
       </div>
 
       {tab === "guide" ? (
-        <div className="grid gap-3 md:grid-cols-2">
+        <Stagger className="grid gap-3 md:grid-cols-2">
           {data.catalog.map((item) => (
-            <Card key={item.kind}>
-              <CardContent className="space-y-2">
-                <Badge className={kindStyle[item.kind]}>{item.label}</Badge>
-                <p className="text-sm">{item.summary}</p>
-                <p className="text-xs text-ink/50">Paie : {item.payroll}</p>
-                <p className="text-xs text-ink/50">Facture : {item.billing}</p>
-              </CardContent>
-            </Card>
+            <MotionItem key={item.kind} variants={staggerItem}>
+              <Card>
+                <CardContent className="space-y-2">
+                  <Badge className={kindStyle[item.kind]}>{item.label}</Badge>
+                  <p className="text-sm">{item.summary}</p>
+                  <p className="text-xs text-ink/50">Paie : {item.payroll}</p>
+                  <p className="text-xs text-ink/50">Facture : {item.billing}</p>
+                </CardContent>
+              </Card>
+            </MotionItem>
           ))}
-        </div>
+        </Stagger>
       ) : null}
 
       {tab === "partners" ? (
@@ -144,28 +157,41 @@ export function NetworkPage() {
           <div className="flex justify-end">
             <ClientDialog onCreated={query.reload} />
           </div>
-          <div className="grid gap-3 md:grid-cols-2">
+          <Stagger className="grid gap-3 md:grid-cols-2">
             {data.clients.map((client) => (
-              <Card key={client.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="font-display text-xl">{client.name}</h3>
-                      <p className="text-sm text-ink/55">{client.city}</p>
+              <MotionItem key={client.id} variants={staggerItem}>
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <BrandLogo name={client.name} domain={hostFromUrl(client.website)} className="h-10 w-10" />
+                        <div>
+                          <h3 className="font-display text-xl">{client.name}</h3>
+                          <p className="text-sm text-ink/55">{client.city}</p>
+                        </div>
+                      </div>
+                      <Badge className={client.kind === "internal" ? "bg-amber-100 text-amber-900" : "bg-sage/15 text-sage-dark"}>
+                        {client.kind === "internal" ? "Client interne" : "Entreprise cliente"}
+                      </Badge>
                     </div>
-                    <Badge className={client.kind === "internal" ? "bg-amber-100 text-amber-900" : "bg-sage/15 text-sage-dark"}>
-                      {client.kind === "internal" ? "Client interne" : "Entreprise cliente"}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-1 text-sm">
-                  <p>Contact : {client.contact || "—"}</p>
-                  <p>SIRET : {client.siret || "—"}</p>
-                  <p className="text-ink/55">{client.notes}</p>
-                </CardContent>
-              </Card>
+                  </CardHeader>
+                  <CardContent className="space-y-1 text-sm">
+                    <p>Contact : {client.contact || "—"}</p>
+                    <p>SIRET : {client.siret || "—"}</p>
+                    {client.website ? (
+                      <p>
+                        Site :{" "}
+                        <a className="text-sage underline-offset-2 hover:underline" href={client.website.startsWith("http") ? client.website : `https://${client.website}`} target="_blank" rel="noreferrer">
+                          {hostFromUrl(client.website)}
+                        </a>
+                      </p>
+                    ) : null}
+                    <p className="text-ink/55">{client.notes}</p>
+                  </CardContent>
+                </Card>
+              </MotionItem>
             ))}
-          </div>
+          </Stagger>
         </div>
       ) : null}
 
@@ -398,6 +424,7 @@ function ClientDialog({ onCreated }: { onCreated: () => Promise<void> }) {
     siret: "",
     contact: "",
     email: "",
+    website: "",
     notes: "",
   });
 
@@ -448,6 +475,9 @@ function ClientDialog({ onCreated }: { onCreated: () => Promise<void> }) {
           </Field>
           <Field label="Email">
             <Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          </Field>
+          <Field label="Site (domaine)">
+            <Input placeholder="ovhcloud.com" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} />
           </Field>
           <div className="sm:col-span-2">
             <Field label="Notes">
