@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { api, getToken, setToken as persistToken } from "@/lib/api";
-import { supabase, supabaseEnabled } from "@/lib/supabase";
+import { api } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 
 export type SessionUser = {
   id: string;
@@ -27,15 +27,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function hydrateFromApi() {
-      if (!getToken() && !supabaseEnabled) {
-        if (!cancelled) setLoading(false);
-        return;
-      }
       try {
         const me = await api<SessionUser>("/api/auth/me");
         if (!cancelled) setUser(me);
       } catch {
-        persistToken(null);
         if (!cancelled) setUser(null);
       } finally {
         if (!cancelled) setLoading(false);
@@ -43,11 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (supabase) {
-      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-        persistToken(session?.access_token ?? null);
-      });
-      void supabase.auth.getSession().then(({ data: { session } }) => {
-        persistToken(session?.access_token ?? getToken());
+      const { data } = supabase.auth.onAuthStateChange(() => {
         void hydrateFromApi();
       });
       return () => {
@@ -72,20 +63,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (error || !data.session?.access_token) {
             throw new Error(error?.message || "Email ou mot de passe incorrect");
           }
-          persistToken(data.session.access_token);
         } else {
-          const result = await api<{ token: string; user: SessionUser }>("/api/auth/login", {
+          await api<{ user: SessionUser; provider: string }>("/api/auth/login", {
             method: "POST",
             body: JSON.stringify({ email, password }),
           });
-          persistToken(result.token);
         }
         const me = await api<SessionUser>("/api/auth/me");
         setUser(me);
         return me;
       },
       logout() {
-        persistToken(null);
         setUser(null);
         void supabase?.auth.signOut();
         void api("/api/auth/logout", { method: "POST" }).catch(() => undefined);

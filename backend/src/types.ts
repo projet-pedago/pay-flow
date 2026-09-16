@@ -142,6 +142,7 @@ export type Settings = {
   overtimeRate: number;
   smicHourly: number;
   fillonT: number;
+  advanceCapRatio: number;
 };
 
 export type Role = "admin" | "employee";

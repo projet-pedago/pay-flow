@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Store } from "../types.js";
@@ -7,13 +7,59 @@ import { buildUsers, createSeed } from "./seed.js";
 
 const dataDir = process.env.DATA_DIR ?? join(dirname(fileURLToPath(import.meta.url)), "../../data");
 const storePath = join(dataDir, "store.json");
+const lockPath = join(dataDir, "store.json.lock");
+
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function acquireLock(): void {
+  if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true });
+  const deadline = Date.now() + 8000;
+  for (;;) {
+    try {
+      const fd = openSync(lockPath, "wx");
+      closeSync(fd);
+      return;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== "EEXIST") throw error;
+      try {
+        if (Date.now() - statSync(lockPath).mtimeMs > 10000) unlinkSync(lockPath);
+      } catch {
+        /* ignore stale lock races */
+      }
+      if (Date.now() > deadline) throw new Error("Impossible de verrouiller store.json");
+      sleepSync(25);
+    }
+  }
+}
+
+function releaseLock(): void {
+  try {
+    unlinkSync(lockPath);
+  } catch {
+    /* already released */
+  }
+}
+
+function withLock<T>(fn: () => T): T {
+  acquireLock();
+  try {
+    return fn();
+  } finally {
+    releaseLock();
+  }
+}
 
 function writeStore(store: Store): void {
   if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true });
-  writeFileSync(storePath, JSON.stringify(store, null, 2));
+  const tmp = `${storePath}.${process.pid}.tmp`;
+  writeFileSync(tmp, JSON.stringify(store, null, 2));
+  renameSync(tmp, storePath);
 }
 
-export function loadStore(): Store {
+function readAndMigrate(): Store {
   if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true });
   if (!existsSync(storePath)) {
     const seeded = createSeed();
@@ -42,6 +88,10 @@ export function loadStore(): Store {
     store.notifications = [];
     dirty = true;
   }
+  if (store.settings.advanceCapRatio == null) {
+    store.settings.advanceCapRatio = 0.3;
+    dirty = true;
+  }
   if (!store.settings.companyAddress) {
     store.settings = {
       ...store.settings,
@@ -53,6 +103,7 @@ export function loadStore(): Store {
       paymentMethod: store.settings.paymentMethod ?? "Virement",
       smicHourly: store.settings.smicHourly ?? 11.88,
       fillonT: store.settings.fillonT ?? 0.3195,
+      advanceCapRatio: store.settings.advanceCapRatio ?? 0.3,
     };
     dirty = true;
   }
@@ -80,17 +131,25 @@ export function loadStore(): Store {
   return store;
 }
 
+export function loadStore(): Store {
+  return withLock(() => readAndMigrate());
+}
+
 export function mutate<T>(fn: (store: Store) => T): T {
-  const store = loadStore();
-  const result = fn(store);
-  writeStore(store);
-  return result;
+  return withLock(() => {
+    const store = readAndMigrate();
+    const result = fn(store);
+    writeStore(store);
+    return result;
+  });
 }
 
 export function resetStore(): Store {
-  const seeded = createSeed();
-  writeStore(seeded);
-  return seeded;
+  return withLock(() => {
+    const seeded = createSeed();
+    writeStore(seeded);
+    return seeded;
+  });
 }
 
 export function id(): string {

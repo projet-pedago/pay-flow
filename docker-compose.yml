@@ -6,7 +6,7 @@ services:
     environment:
       PORT: "45231"
       START: src/services/auth/index.ts
-      JWT_SECRET: payrollflow-dev-secret
+      JWT_SECRET: ${JWT_SECRET:-payrollflow-dev-secret}
       DATA_DIR: /app/data
       SUPABASE_URL: ${SUPABASE_URL:-}
       SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
@@ -23,7 +23,7 @@ services:
     environment:
       PORT: "45232"
       START: src/services/hr/index.ts
-      JWT_SECRET: payrollflow-dev-secret
+      JWT_SECRET: ${JWT_SECRET:-payrollflow-dev-secret}
       DATA_DIR: /app/data
       SUPABASE_URL: ${SUPABASE_URL:-}
       SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
@@ -40,7 +40,7 @@ services:
     environment:
       PORT: "45233"
       START: src/services/payroll/index.ts
-      JWT_SECRET: payrollflow-dev-secret
+      JWT_SECRET: ${JWT_SECRET:-payrollflow-dev-secret}
       DATA_DIR: /app/data
       SUPABASE_URL: ${SUPABASE_URL:-}
       SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
@@ -57,7 +57,7 @@ services:
     environment:
       PORT: "45234"
       START: src/services/time/index.ts
-      JWT_SECRET: payrollflow-dev-secret
+      JWT_SECRET: ${JWT_SECRET:-payrollflow-dev-secret}
       DATA_DIR: /app/data
       SUPABASE_URL: ${SUPABASE_URL:-}
       SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}

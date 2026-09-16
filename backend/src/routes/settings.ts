@@ -28,6 +28,7 @@ settingsRouter.put("/", (req, res) => {
       overtimeRate: z.number().positive().optional(),
       smicHourly: z.number().positive().optional(),
       fillonT: z.number().min(0).optional(),
+      advanceCapRatio: z.number().min(0).max(1).optional(),
       rates: z
         .array(
           z.object({

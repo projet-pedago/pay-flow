@@ -50,30 +50,30 @@ export function EmployeeProfilePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-display text-4xl text-[#16324f]">
+        <h2 className="font-display text-4xl text-employee">
           {employee.firstName} {employee.lastName}
         </h2>
         <div className="mt-2 flex items-center gap-2">
           <EmployeeBadge status={employee.status} />
-          <span className="text-sm text-[#16324f]/60">{employee.jobTitle}</span>
+          <span className="text-sm text-employee/60">{employee.jobTitle}</span>
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Card className="rounded-3xl border-[#d5e0ea] shadow-none">
+        <Card className="rounded-3xl border-employee-line shadow-none">
           <CardContent className="space-y-1 text-sm">
-            <p className="text-[#16324f]/45">Contrat</p>
+            <p className="text-employee/45">Contrat</p>
             <p className="font-semibold">{employee.contractType} depuis {employee.hireDate}</p>
-            <p className="text-[#16324f]/45">Département</p>
+            <p className="text-employee/45">Département</p>
             <p className="font-semibold">{department?.name ?? "—"}</p>
-            <p className="text-[#16324f]/45">Salaire de base</p>
+            <p className="text-employee/45">Salaire de base</p>
             <p className="font-semibold">{money(employee.baseSalary, settings.currency)} / mois</p>
-            <p className="text-[#16324f]/45">Matricule</p>
+            <p className="text-employee/45">Matricule</p>
             <p className="font-semibold">{employee.matricule || "—"}</p>
-            <p className="text-xs text-[#16324f]/40">Le salaire n’est modifiable que par un administrateur.</p>
+            <p className="text-xs text-employee/40">Le salaire n’est modifiable que par un administrateur.</p>
           </CardContent>
         </Card>
-        <Card className="rounded-3xl border-[#d5e0ea] shadow-none">
+        <Card className="rounded-3xl border-employee-line shadow-none">
           <CardContent className="grid gap-3">
             <div>
               <Label>Téléphone</Label>

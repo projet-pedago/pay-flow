@@ -2,8 +2,10 @@ import { Router } from "express";
 import { z } from "zod";
 import { DEMO_EMPLOYEE_PASSWORD } from "../auth-constants.js";
 import { hashPassword, requireAdmin } from "../auth.js";
-import { id, loadStore, mutate } from "../lib/store.js";
+import { parseCsv } from "../lib/csv.js";
 import { provisionEmployeeLogin } from "../lib/provision-login.js";
+import type { Employee } from "../types.js";
+import { id, loadStore, mutate } from "../lib/store.js";
 
 const employeeSchema = z.object({
   firstName: z.string().min(1),
@@ -70,8 +72,8 @@ employeesRouter.post("/import", (req, res) => {
     res.status(400).json({ error: "Fichier CSV manquant" });
     return;
   }
-  const lines = parsed.data.csv.trim().split(/\r?\n/);
-  const header = lines.shift()?.split(",").map((item) => item.trim()) ?? [];
+  const rows = parseCsv(parsed.data.csv);
+  const header = rows.shift()?.map((item) => item.trim()) ?? [];
   const required = ["firstName", "lastName", "email", "departmentCode", "jobTitle", "baseSalary"];
   if (required.some((key) => !header.includes(key))) {
     res.status(400).json({
@@ -79,19 +81,37 @@ employeesRouter.post("/import", (req, res) => {
     });
     return;
   }
-  const created = mutate((store) => {
-    const added = [];
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      const cols = line.split(",").map((item) => item.trim());
-      const row = Object.fromEntries(header.map((key, index) => [key, cols[index] ?? ""]));
+  type ImportRow = { line: number; status: "created" | "skipped" | "error"; email?: string; reason?: string };
+  const result = mutate((store) => {
+    const added: Employee[] = [];
+    const report: ImportRow[] = [];
+    rows.forEach((cols, index) => {
+      const line = index + 2;
+      const row = Object.fromEntries(header.map((key, col) => [key, cols[col] ?? ""]));
+      const email = row.email?.trim().toLowerCase() ?? "";
+      if (!row.firstName || !row.lastName || !email) {
+        report.push({ line, status: "error", email: row.email, reason: "Nom, prénom ou email manquant" });
+        return;
+      }
       const department = store.departments.find((item) => item.code === row.departmentCode || item.id === row.departmentCode);
-      if (!department || store.employees.some((item) => item.email === row.email)) continue;
+      if (!department) {
+        report.push({ line, status: "error", email, reason: `Département inconnu (${row.departmentCode || "vide"})` });
+        return;
+      }
+      if (store.employees.some((item) => item.email.toLowerCase() === email)) {
+        report.push({ line, status: "skipped", email, reason: "Email déjà présent" });
+        return;
+      }
+      const baseSalary = Number(String(row.baseSalary).replace(",", "."));
+      if (!Number.isFinite(baseSalary) || baseSalary <= 0) {
+        report.push({ line, status: "error", email, reason: "Salaire brut invalide" });
+        return;
+      }
       const employee = {
         id: id(),
         firstName: row.firstName,
         lastName: row.lastName,
-        email: row.email,
+        email: row.email.trim(),
         phone: row.phone || "n/c",
         departmentId: department.id,
         jobTitle: row.jobTitle,
@@ -101,7 +121,7 @@ employeesRouter.post("/import", (req, res) => {
           | "Stage"
           | "Alternance",
         hireDate: row.hireDate || new Date().toISOString().slice(0, 10),
-        baseSalary: Number(row.baseSalary) || 0,
+        baseSalary,
         status: "active" as const,
         iban: row.iban || "FR76 A COMPLETER",
         city: row.city || store.settings.companyCity,
@@ -120,7 +140,6 @@ employeesRouter.post("/import", (req, res) => {
         mealTicket5: 0,
         mealTicket1650: 0,
       };
-      if (!employee.baseSalary) continue;
       store.employees.push(employee);
       store.users.push({
         id: id(),
@@ -131,11 +150,18 @@ employeesRouter.post("/import", (req, res) => {
         employeeId: employee.id,
       });
       added.push(employee);
+      report.push({ line, status: "created", email: employee.email });
       void provisionEmployeeLogin(employee.email, `${employee.firstName} ${employee.lastName}`);
-    }
-    return added;
+    });
+    return { added, report };
   });
-  res.status(201).json({ imported: created.length, employees: created });
+  res.status(201).json({
+    imported: result.added.length,
+    skipped: result.report.filter((item) => item.status === "skipped").length,
+    errors: result.report.filter((item) => item.status === "error").length,
+    report: result.report,
+    employees: result.added,
+  });
 });
 
 employeesRouter.get("/:id", (req, res) => {

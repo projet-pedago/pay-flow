@@ -1,10 +1,12 @@
+import "./lib/env.js";
 import bcrypt from "bcryptjs";
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
+import { JWT_SECRET } from "./lib/env.js";
 import { getSupabase } from "./lib/supabase.js";
 import type { Role } from "./types.js";
 
-const SECRET = process.env.JWT_SECRET ?? "payrollflow-dev-secret";
+export const AUTH_COOKIE = "payrollflow_token";
 
 export type TokenUser = {
   id: string;
@@ -17,7 +19,7 @@ export type TokenUser = {
 export type AuthedRequest = Request & { user: TokenUser };
 
 export function signToken(user: TokenUser): string {
-  return jwt.sign(user, SECRET, { expiresIn: "12h" });
+  return jwt.sign(user, JWT_SECRET, { expiresIn: "12h" });
 }
 
 export function hashPassword(password: string): string {
@@ -26,6 +28,38 @@ export function hashPassword(password: string): string {
 
 export function verifyPassword(password: string, passwordHash: string): boolean {
   return bcrypt.compareSync(password, passwordHash);
+}
+
+function cookieHeader(token: string, maxAgeSec: number): string {
+  const parts = [
+    `${AUTH_COOKIE}=${encodeURIComponent(token)}`,
+    "Path=/",
+    "HttpOnly",
+    "SameSite=Lax",
+    `Max-Age=${maxAgeSec}`,
+  ];
+  if (process.env.NODE_ENV === "production") parts.push("Secure");
+  return parts.join("; ");
+}
+
+export function setAuthCookie(res: Response, token: string): void {
+  res.setHeader("Set-Cookie", cookieHeader(token, 12 * 60 * 60));
+}
+
+export function clearAuthCookie(res: Response): void {
+  const parts = [`${AUTH_COOKIE}=`, "Path=/", "HttpOnly", "SameSite=Lax", "Max-Age=0"];
+  if (process.env.NODE_ENV === "production") parts.push("Secure");
+  res.setHeader("Set-Cookie", parts.join("; "));
+}
+
+export function tokenFromRequest(req: Request): string | null {
+  const header = req.headers.authorization;
+  if (header?.startsWith("Bearer ")) return header.slice(7);
+  const cookie = req.headers.cookie;
+  if (!cookie) return null;
+  const match = cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith(`${AUTH_COOKIE}=`));
+  if (!match) return null;
+  return decodeURIComponent(match.slice(AUTH_COOKIE.length + 1));
 }
 
 export async function tokenUserFromEmail(email: string, supabaseId?: string): Promise<TokenUser | null> {
@@ -66,12 +100,11 @@ export async function resolveSupabaseUser(accessToken: string): Promise<TokenUse
 }
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const header = req.headers.authorization;
-  if (!header?.startsWith("Bearer ")) {
+  const token = tokenFromRequest(req);
+  if (!token) {
     res.status(401).json({ error: "Connexion requise" });
     return;
   }
-  const token = header.slice(7);
   const supabaseUser = await resolveSupabaseUser(token);
   if (supabaseUser) {
     (req as Request & { user?: TokenUser }).user = supabaseUser;
@@ -79,7 +112,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return;
   }
   try {
-    (req as Request & { user?: TokenUser }).user = jwt.verify(token, SECRET) as TokenUser;
+    (req as Request & { user?: TokenUser }).user = jwt.verify(token, JWT_SECRET) as TokenUser;
     next();
   } catch {
     res.status(401).json({ error: "Session expirée" });

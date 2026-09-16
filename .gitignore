@@ -1,6 +1,7 @@
 node_modules
 dist
 backend/data/store.json
+backend/data/store.json.lock
 .DS_Store
 *.log
 .vite

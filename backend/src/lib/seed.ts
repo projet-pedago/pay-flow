@@ -145,6 +145,7 @@ export function createSeed(): Store {
     overtimeRate: 1.25,
     smicHourly: 11.88,
     fillonT: 0.3195,
+    advanceCapRatio: 0.3,
   };
 
   const extras: Record<string, { overtimeHours: number; bonus: number; workedDays: number }> = {

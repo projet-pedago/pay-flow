@@ -127,8 +127,18 @@ export function SettingsPage() {
             <Input type="number" step="0.01" value={settings.smicHourly ?? 11.88} onChange={(e) => setSettings({ ...settings, smicHourly: Number(e.target.value) })} />
           </div>
           <div>
-            <Label>Coeff. réduction générale</Label>
-            <Input type="number" step="0.0001" value={settings.fillonT ?? 0.3195} onChange={(e) => setSettings({ ...settings, fillonT: Number(e.target.value) })} />
+            <Label>Plafond d'acompte (% du dernier net)</Label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              step="1"
+              value={Math.round((settings.advanceCapRatio ?? 0.3) * 100)}
+              onChange={(e) => setSettings({ ...settings, advanceCapRatio: Number(e.target.value) / 100 })}
+            />
+            <p className="mt-1 text-xs text-ink/40">
+              Une demande supérieure est refusée, en tenant compte des acomptes déjà en attente ou validés sur le même mois.
+            </p>
           </div>
         </CardContent>
       </Card>

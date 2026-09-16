@@ -24,15 +24,15 @@ export function EmployeePayslipsPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="font-display text-4xl text-[#16324f]">Mes bulletins</h2>
-        <p className="mt-2 text-sm text-[#16324f]/60">Consultez et imprimez uniquement vos propres fiches de paie.</p>
+        <h2 className="font-display text-4xl text-employee">Mes bulletins</h2>
+        <p className="mt-2 text-sm text-employee/60">Consultez et imprimez uniquement vos propres fiches de paie.</p>
       </div>
       <div className="space-y-3">
         {slips.data.map(({ payslip, period }) => (
           <Link
             key={payslip.id}
             to={`/espace/bulletins/${payslip.id}`}
-            className="flex items-center justify-between rounded-3xl border border-[#d5e0ea] bg-white px-5 py-4"
+            className="flex items-center justify-between rounded-3xl border border-employee-line bg-white px-5 py-4"
           >
             <div className="space-y-1">
               <p className="font-semibold capitalize">

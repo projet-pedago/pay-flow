@@ -47,9 +47,13 @@ export function LeavesPage() {
   }
 
   async function decide(id: string, status: "approved" | "rejected") {
-    await api(`/api/leaves/${id}/decide`, { method: "POST", body: JSON.stringify({ status }) });
-    toast.success(status === "approved" ? "Absence validée" : "Absence refusée");
-    await query.reload();
+    try {
+      await api(`/api/leaves/${id}/decide`, { method: "POST", body: JSON.stringify({ status }) });
+      toast.success(status === "approved" ? "Absence validée" : "Absence refusée");
+      await query.reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Décision impossible");
+    }
   }
 
   return (
@@ -139,6 +143,9 @@ export function LeavesPage() {
               <p className="text-sm text-ink/55">
                 {leave.startDate} → {leave.endDate} · {leave.reason}
               </p>
+              {leave.decidedAt ? (
+                <p className="mt-1 text-xs text-ink/40">Décision le {new Date(leave.decidedAt).toLocaleDateString("fr-FR")}</p>
+              ) : null}
             </div>
             <div className="flex items-center gap-2">
               <Badge className={statusStyle[leave.status]}>{leave.status}</Badge>

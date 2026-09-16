@@ -156,6 +156,7 @@ export type Settings = {
   overtimeRate: number;
   smicHourly: number;
   fillonT: number;
+  advanceCapRatio: number;
 };
 
 export type DashboardData = {
@@ -209,6 +210,7 @@ export type LeaveRequest = {
   reason: string;
   status: RequestStatus;
   createdAt: string;
+  decidedAt?: string;
 };
 
 export type LeaveBalance = {
@@ -228,6 +230,7 @@ export type SalaryAdvance = {
   reason: string;
   status: RequestStatus;
   createdAt: string;
+  decidedAt?: string;
 };
 
 export type DocumentPack = {

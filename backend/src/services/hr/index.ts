@@ -1,3 +1,4 @@
+import "../../lib/env.js";
 import { requireAuth } from "../../auth.js";
 import { createService } from "../../http.js";
 import { departmentsRouter } from "../../routes/departments.js";

@@ -1,6 +1,7 @@
 import "../lib/env.js";
 import cors from "cors";
 import express, { type Request, type RequestHandler, type Response } from "express";
+import { clientIp } from "../lib/client-ip.js";
 
 const port = Number(process.env.PORT ?? 45218);
 const AUTH_URL = process.env.AUTH_URL ?? "http://127.0.0.1:45231";
@@ -14,9 +15,12 @@ function proxyTo(baseUrl: string): RequestHandler {
       const url = `${baseUrl}${req.originalUrl}`;
       const headers = new Headers();
       for (const [key, value] of Object.entries(req.headers)) {
-        if (!value || key === "host" || key === "content-length") continue;
+        if (!value || key === "host" || key === "content-length" || key === "connection") continue;
         headers.set(key, Array.isArray(value) ? value.join(",") : value);
       }
+      const forwarded = headers.get("x-forwarded-for");
+      const ip = clientIp(req);
+      headers.set("x-forwarded-for", forwarded ? `${forwarded}, ${ip}` : ip);
       const init: RequestInit = { method: req.method, headers };
       if (req.method !== "GET" && req.method !== "HEAD") {
         init.body = JSON.stringify(req.body ?? {});
@@ -27,6 +31,10 @@ function proxyTo(baseUrl: string): RequestHandler {
       res.status(upstream.status);
       const contentType = upstream.headers.get("content-type");
       if (contentType) res.setHeader("content-type", contentType);
+      const retryAfter = upstream.headers.get("retry-after");
+      if (retryAfter) res.setHeader("retry-after", retryAfter);
+      const cookies = typeof upstream.headers.getSetCookie === "function" ? upstream.headers.getSetCookie() : [];
+      for (const cookie of cookies) res.append("set-cookie", cookie);
       res.send(buffer);
     } catch (error) {
       console.error(error);
@@ -36,7 +44,8 @@ function proxyTo(baseUrl: string): RequestHandler {
 }
 
 const app = express();
-app.use(cors());
+app.set("trust proxy", 1);
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
 app.get("/api/health", async (_req, res) => {

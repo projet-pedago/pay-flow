@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { api } from "@/lib/api";
 import { initials, money } from "@/lib/format";
-import type { ContractType, Department, Employee, EmployeeDraft, EmployeeStatus, Settings } from "@/lib/types";
+import type { Civility, ContractType, Department, Employee, EmployeeDraft, EmployeeStatus, Settings } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
 
 const emptyForm = {
@@ -29,7 +29,7 @@ const emptyForm = {
   iban: "",
   city: "",
   country: "France",
-  civility: "M" as const,
+  civility: "M" as Civility,
   matricule: "",
   address: "",
   postalCode: "",
@@ -57,6 +57,9 @@ export function EmployeesPage() {
   const [csv, setCsv] = useState(
     "firstName,lastName,email,phone,departmentCode,jobTitle,contractType,hireDate,baseSalary,iban,city,country\nNora,Sy,nora.sy@payrollflow.demo,+221 77 000 11 22,RH,Juriste sociale,CDI,2026-09-01,3300,FR76 ACCT-000044,Dakar,Sénégal",
   );
+  const [importReport, setImportReport] = useState<
+    { line: number; status: "created" | "skipped" | "error"; email?: string; reason?: string }[] | null
+  >(null);
 
   const filtered = useMemo(() => {
     const list = employees.data ?? [];
@@ -132,11 +135,17 @@ export function EmployeesPage() {
             size="sm"
             onClick={async () => {
               try {
-                const result = await api<{ imported: number }>("/api/employees/import", {
+                const result = await api<{
+                  imported: number;
+                  skipped: number;
+                  errors: number;
+                  report: { line: number; status: "created" | "skipped" | "error"; email?: string; reason?: string }[];
+                }>("/api/employees/import", {
                   method: "POST",
                   body: JSON.stringify({ csv }),
                 });
-                toast.success(`${result.imported} collaborateur(s) importé(s)`);
+                setImportReport(result.report);
+                toast.success(`${result.imported} créé(s) · ${result.skipped} ignoré(s) · ${result.errors} erreur(s)`);
                 await employees.reload();
               } catch (err) {
                 toast.error(err instanceof Error ? err.message : "Import impossible");
@@ -145,6 +154,24 @@ export function EmployeesPage() {
           >
             Importer le fichier
           </Button>
+          {importReport ? (
+            <div className="overflow-hidden rounded-2xl border border-ink/10 text-xs">
+              {importReport.map((row) => (
+                <div key={`${row.line}-${row.email ?? ""}`} className="flex gap-3 border-b border-ink/6 px-3 py-2 last:border-0">
+                  <span className="w-12 shrink-0 text-ink/40">L.{row.line}</span>
+                  <span
+                    className={
+                      row.status === "created" ? "text-sage" : row.status === "skipped" ? "text-amber-700" : "text-red-700"
+                    }
+                  >
+                    {row.status}
+                  </span>
+                  <span className="truncate text-ink/70">{row.email ?? "—"}</span>
+                  <span className="text-ink/50">{row.reason ?? ""}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 

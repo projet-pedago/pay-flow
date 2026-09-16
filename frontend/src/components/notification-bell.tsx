@@ -26,7 +26,7 @@ export function NotificationBell({ variant = "admin" }: { variant?: "admin" | "e
         className={
           variant === "admin"
             ? "relative rounded-full p-2 text-white/80 hover:bg-white/10"
-            : "relative rounded-full p-2 text-[#16324f] hover:bg-white"
+            : "relative rounded-full p-2 text-employee hover:bg-white"
         }
         aria-label="Notifications"
       >

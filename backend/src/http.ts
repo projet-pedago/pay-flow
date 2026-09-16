@@ -4,7 +4,8 @@ import express, { type Express, type Request, type Response } from "express";
 
 export function createService(name: string, port: number, setup: (app: Express) => void): void {
   const app = express();
-  app.use(cors());
+  app.set("trust proxy", 1);
+  app.use(cors({ origin: true, credentials: true }));
   app.use(express.json());
 
   app.get("/api/health", (_req, res) => {

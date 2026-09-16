@@ -19,16 +19,26 @@ const statusStyle: Record<string, string> = {
   settled: "bg-zinc-200 text-zinc-700",
 };
 
+const statusLabel: Record<string, string> = {
+  pending: "En attente",
+  approved: "Accepté",
+  rejected: "Refusé",
+  settled: "Soldé",
+};
+
+type Quota = { ratio: number; reference: number; cap: number; used: number; remaining: number; year: number; month: number };
+
 export function AdvancesPage() {
   const { user } = useAuth();
   const admin = user?.role === "admin";
   const query = useApi<SalaryAdvance[]>("/api/advances");
+  const quota = useApi<Quota>(admin ? null : "/api/advances/quota");
   const now = new Date();
   const [amount, setAmount] = useState(300);
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
 
-  if (query.loading) return <LoadingState />;
+  if (query.loading || (!admin && quota.loading)) return <LoadingState />;
   if (query.error || !query.data) return <ErrorState message={query.error ?? "Erreur"} onRetry={query.reload} />;
 
   async function submit() {
@@ -38,9 +48,10 @@ export function AdvancesPage() {
         method: "POST",
         body: JSON.stringify({ amount, year: now.getFullYear(), month: now.getMonth() + 1, reason }),
       });
-      toast.success("Acompte demandé");
+      toast.success("Acompte demandé — le service RH a été notifié.");
       setReason("");
       await query.reload();
+      await quota.reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Demande impossible");
     } finally {
@@ -49,9 +60,13 @@ export function AdvancesPage() {
   }
 
   async function decide(id: string, status: "approved" | "rejected") {
-    await api(`/api/advances/${id}/decide`, { method: "POST", body: JSON.stringify({ status }) });
-    toast.success("Décision enregistrée");
-    await query.reload();
+    try {
+      await api(`/api/advances/${id}/decide`, { method: "POST", body: JSON.stringify({ status }) });
+      toast.success("Décision enregistrée");
+      await query.reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Décision impossible");
+    }
   }
 
   return (
@@ -59,13 +74,19 @@ export function AdvancesPage() {
       <div>
         <h2 className="font-display text-3xl sm:text-4xl">{admin ? "Acomptes sur salaire" : "Mes acomptes"}</h2>
         <p className="mt-2 max-w-2xl text-sm text-ink/60">
-          Un acompte validé est déduit automatiquement du bulletin du mois — comme sur les plateformes paie du marché.
+          Un acompte validé est déduit automatiquement du bulletin du mois. Plafond : pourcentage du dernier net, configurable dans Paramètres.
         </p>
       </div>
 
       {!admin ? (
         <Card>
           <CardContent>
+            {quota.data ? (
+              <p className="mb-4 text-sm text-ink/60">
+                Disponible ce mois : <strong>{money(quota.data.remaining)}</strong> sur un plafond de {money(quota.data.cap)} (
+                {Math.round(quota.data.ratio * 100)} % du dernier net {money(quota.data.reference)}).
+              </p>
+            ) : null}
             <form
               className="grid gap-4 sm:grid-cols-2"
               onSubmit={(event) => {
@@ -75,7 +96,7 @@ export function AdvancesPage() {
             >
               <div>
                 <Label>Montant</Label>
-                <Input type="number" min={50} value={amount} onChange={(e) => setAmount(Number(e.target.value))} />
+                <Input type="number" min={1} max={quota.data?.remaining ?? undefined} value={amount} onChange={(e) => setAmount(Number(e.target.value))} />
               </div>
               <div className="sm:col-span-2">
                 <Label>Motif</Label>
@@ -92,26 +113,33 @@ export function AdvancesPage() {
       ) : null}
 
       <div className="overflow-hidden rounded-3xl border border-ink/10 bg-white">
-        {query.data.map((advance) => (
-          <div key={advance.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/6 px-5 py-4 last:border-0">
-            <div>
-              <p className="font-semibold">
-                {money(advance.amount)} · {String(advance.month).padStart(2, "0")}/{advance.year}
-                {advance.employeeName ? ` · ${advance.employeeName}` : ""}
-              </p>
-              <p className="text-sm text-ink/55">{advance.reason}</p>
+        {query.data.length === 0 ? (
+          <p className="px-5 py-10 text-center text-sm text-ink/50">Aucune demande d’acompte.</p>
+        ) : (
+          query.data.map((advance) => (
+            <div key={advance.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/6 px-5 py-4 last:border-0">
+              <div>
+                <p className="font-semibold">
+                  {money(advance.amount)} · {String(advance.month).padStart(2, "0")}/{advance.year}
+                  {advance.employeeName ? ` · ${advance.employeeName}` : ""}
+                </p>
+                <p className="text-sm text-ink/55">{advance.reason}</p>
+                {advance.decidedAt ? (
+                  <p className="mt-1 text-xs text-ink/40">Décision le {new Date(advance.decidedAt).toLocaleDateString("fr-FR")}</p>
+                ) : null}
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge className={statusStyle[advance.status]}>{statusLabel[advance.status] ?? advance.status}</Badge>
+                {admin && advance.status === "pending" ? (
+                  <>
+                    <Button size="sm" onClick={() => void decide(advance.id, "approved")}>Valider</Button>
+                    <Button size="sm" variant="outline" onClick={() => void decide(advance.id, "rejected")}>Refuser</Button>
+                  </>
+                ) : null}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge className={statusStyle[advance.status]}>{advance.status}</Badge>
-              {admin && advance.status === "pending" ? (
-                <>
-                  <Button size="sm" onClick={() => void decide(advance.id, "approved")}>Valider</Button>
-                  <Button size="sm" variant="outline" onClick={() => void decide(advance.id, "rejected")}>Refuser</Button>
-                </>
-              ) : null}
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );

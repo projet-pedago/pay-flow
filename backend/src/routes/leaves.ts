@@ -4,6 +4,23 @@ import { getUser, requireAdmin, requireAuth } from "../auth.js";
 import { countWeekdays, LEAVE_LABELS } from "../lib/dates.js";
 import { notifyAdmins, notifyEmployee } from "../lib/notify.js";
 import { id, loadStore, mutate } from "../lib/store.js";
+import type { LeaveType, Store } from "../types.js";
+
+const ACQUIRED: Record<"cp" | "rtt", number> = { cp: 25, rtt: 10 };
+
+function leaveRemaining(store: Store, employeeId: string, type: LeaveType, exceptId?: string): number {
+  if (type !== "cp" && type !== "rtt") return Number.POSITIVE_INFINITY;
+  const used = store.leaves
+    .filter(
+      (item) =>
+        item.id !== exceptId &&
+        item.employeeId === employeeId &&
+        item.type === type &&
+        (item.status === "approved" || item.status === "pending"),
+    )
+    .reduce((sum, item) => sum + item.days, 0);
+  return ACQUIRED[type] - used;
+}
 
 export const leavesRouter = Router();
 leavesRouter.use(requireAuth);
@@ -28,8 +45,8 @@ leavesRouter.get("/", (req, res) => {
       return {
         employeeId: employee.id,
         name: `${employee.firstName} ${employee.lastName}`,
-        cp: { acquired: 25, used: usedCp, remaining: 25 - usedCp },
-        rtt: { acquired: 10, used: usedRtt, remaining: 10 - usedRtt },
+        cp: { acquired: ACQUIRED.cp, used: usedCp, remaining: ACQUIRED.cp - usedCp },
+        rtt: { acquired: ACQUIRED.rtt, used: usedRtt, remaining: ACQUIRED.rtt - usedRtt },
       };
     });
   res.json({ leaves: decorated, balances, labels: LEAVE_LABELS });
@@ -61,6 +78,12 @@ leavesRouter.post("/", (req, res) => {
     return;
   }
   const created = mutate((store) => {
+    if (parsed.data.type === "cp" || parsed.data.type === "rtt") {
+      const remaining = leaveRemaining(store, employeeId, parsed.data.type);
+      if (days > remaining + 0.001) {
+        return { error: `Solde insuffisant : ${remaining} jour(s) restant(s) en ${parsed.data.type.toUpperCase()}.` };
+      }
+    }
     const leave = {
       id: id(),
       employeeId,
@@ -79,9 +102,13 @@ leavesRouter.post("/", (req, res) => {
       body: `${employee?.firstName ?? ""} ${employee?.lastName ?? ""} · ${LEAVE_LABELS[leave.type]} · ${days} j`,
       link: "/admin/conges",
     });
-    return leave;
+    return { leave };
   });
-  res.status(201).json(created);
+  if ("error" in created) {
+    res.status(400).json({ error: created.error });
+    return;
+  }
+  res.status(201).json(created.leave);
 });
 
 leavesRouter.post("/:id/decide", requireAdmin, (req, res) => {
@@ -93,6 +120,12 @@ leavesRouter.post("/:id/decide", requireAdmin, (req, res) => {
   const updated = mutate((store) => {
     const leave = store.leaves.find((item) => item.id === req.params.id);
     if (!leave) return null;
+    if (parsed.data.status === "approved" && (leave.type === "cp" || leave.type === "rtt")) {
+      const remaining = leaveRemaining(store, leave.employeeId, leave.type, leave.id);
+      if (leave.days > remaining + 0.001) {
+        return { error: `Solde insuffisant : ${remaining} jour(s) restant(s) en ${leave.type.toUpperCase()}.` };
+      }
+    }
     leave.status = parsed.data.status;
     leave.decidedAt = new Date().toISOString();
     notifyEmployee(store, leave.employeeId, {
@@ -100,11 +133,15 @@ leavesRouter.post("/:id/decide", requireAdmin, (req, res) => {
       body: `${LEAVE_LABELS[leave.type]} du ${leave.startDate} au ${leave.endDate}`,
       link: "/espace/conges",
     });
-    return leave;
+    return { leave };
   });
   if (!updated) {
     res.status(404).json({ error: "Demande introuvable" });
     return;
   }
-  res.json(updated);
+  if ("error" in updated) {
+    res.status(400).json({ error: updated.error });
+    return;
+  }
+  res.json(updated.leave);
 });

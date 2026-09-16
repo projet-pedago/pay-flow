@@ -14,7 +14,11 @@ export default defineConfig({
     host: "0.0.0.0",
     port: 45217,
     proxy: {
-      "/api": "http://127.0.0.1:45218",
+      "/api": {
+        target: "http://127.0.0.1:45218",
+        changeOrigin: true,
+        xfwd: true,
+      },
     },
   },
   preview: {
