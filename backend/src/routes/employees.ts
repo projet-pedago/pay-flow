@@ -227,19 +227,13 @@ employeesRouter.post("/", (req, res) => {
     return;
   }
   const employee = mutate((store) => {
-    const created = { id: id(), ...withLegalDefaults(parsed.data, store) };
-    store.employees.push(created);
-    store.users.push({
+    const created = {
       id: id(),
-      email: created.email,
-      passwordHash: hashPassword(DEMO_EMPLOYEE_PASSWORD),
-      role: "employee",
-      name: `${created.firstName} ${created.lastName}`,
-      employeeId: created.id,
-    });
+      ...withLegalDefaults(parsed.data, store),
+    };
+    store.employees.push(created);
     return created;
   });
-  void provisionEmployeeLogin(employee.email, `${employee.firstName} ${employee.lastName}`);
   res.status(201).json(employee);
 });
 
