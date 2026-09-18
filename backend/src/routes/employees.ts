@@ -4,6 +4,7 @@ import { DEMO_EMPLOYEE_PASSWORD } from "../auth-constants.js";
 import { hashPassword, requireAdmin } from "../auth.js";
 import { parseCsv } from "../lib/csv.js";
 import { provisionEmployeeLogin } from "../lib/provision-login.js";
+import { entraProvisioningConfigured, provisionPayFlowEmployee } from "../lib/entra-provision.js";
 import type { Employee } from "../types.js";
 import { id, loadStore, mutate } from "../lib/store.js";
 
@@ -59,6 +60,7 @@ function withLegalDefaults(
     mealTicket1650: data.mealTicket1650 ?? 0,
     contractEndDate: data.contractEndDate || undefined,
     entraObjectId: data.entraObjectId || undefined,
+    entraProvisioningStatus: "pending" as const,
   };
 }
 
@@ -220,7 +222,37 @@ employeesRouter.get("/:id", (req, res) => {
   res.json(employee);
 });
 
-employeesRouter.post("/", (req, res) => {
+async function persistEntraProvisioning(employeeId: string): Promise<Employee | null> {
+  const current = loadStore().employees.find((item) => item.id === employeeId);
+  if (!current) return null;
+
+  if (!entraProvisioningConfigured()) {
+    return mutate((store) => {
+      const item = store.employees.find((entry) => entry.id === employeeId);
+      if (!item) return null;
+      item.entraProvisioningStatus = "skipped";
+      item.entraProvisioningError = "Microsoft Graph n’est pas configuré.";
+      return item;
+    });
+  }
+
+  const result = await provisionPayFlowEmployee(current);
+  return mutate((store) => {
+    const item = store.employees.find((entry) => entry.id === employeeId);
+    if (!item) return null;
+    if (result.ok) {
+      item.entraObjectId = result.oid;
+      item.entraProvisioningStatus = "provisioned";
+      delete item.entraProvisioningError;
+    } else {
+      item.entraProvisioningStatus = "failed";
+      item.entraProvisioningError = result.error;
+    }
+    return item;
+  });
+}
+
+employeesRouter.post("/", async (req, res) => {
   const parsed = employeeSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Données invalides", details: parsed.error.flatten() });
@@ -234,7 +266,24 @@ employeesRouter.post("/", (req, res) => {
     store.employees.push(created);
     return created;
   });
-  res.status(201).json(employee);
+  const provisioned = (await persistEntraProvisioning(employee.id)) ?? employee;
+  res.status(201).json(provisioned);
+});
+
+employeesRouter.post("/:id/entra-provision", async (req, res) => {
+  const updated = await persistEntraProvisioning(req.params.id);
+  if (!updated) {
+    res.status(404).json({ error: "Employé introuvable" });
+    return;
+  }
+  if (updated.entraProvisioningStatus === "failed") {
+    res.status(502).json({
+      ...updated,
+      error: updated.entraProvisioningError ?? "Provisionnement Entra impossible",
+    });
+    return;
+  }
+  res.json(updated);
 });
 
 employeesRouter.put("/:id", (req, res) => {
@@ -248,7 +297,11 @@ employeesRouter.put("/:id", (req, res) => {
     if (index < 0) return null;
     const patch = { ...parsed.data };
     if (patch.entraObjectId === "") delete patch.entraObjectId;
-    store.employees[index] = { ...store.employees[index], ...patch };
+    const { entraProvisioningStatus: _status, entraProvisioningError: _error, ...safePatch } = patch as typeof patch & {
+      entraProvisioningStatus?: Employee["entraProvisioningStatus"];
+      entraProvisioningError?: string;
+    };
+    store.employees[index] = { ...store.employees[index], ...safePatch };
     const user = store.users.find((item) => item.employeeId === req.params.id);
     if (user) {
       user.email = store.employees[index].email;

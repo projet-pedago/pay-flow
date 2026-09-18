@@ -77,8 +77,14 @@ export function EmployeesPage() {
   async function createEmployee() {
     setSaving(true);
     try {
-      await api("/api/employees", { method: "POST", body: JSON.stringify(form) });
-      toast.success("Employé créé");
+      const created = await api<Employee>("/api/employees", { method: "POST", body: JSON.stringify(form) });
+      if (created.entraProvisioningStatus === "provisioned") {
+        toast.success("Collaborateur créé et compte Microsoft provisionné");
+      } else if (created.entraProvisioningStatus === "failed") {
+        toast.error(created.entraProvisioningError ?? "Fiche créée, mais le compte Microsoft n’a pas pu être provisionné");
+      } else {
+        toast.success("Employé créé");
+      }
       setOpen(false);
       setForm(emptyForm);
       await employees.reload();

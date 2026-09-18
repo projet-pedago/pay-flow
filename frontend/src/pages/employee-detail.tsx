@@ -19,6 +19,7 @@ export function EmployeeDetailPage() {
   const slipsQuery = useApi<Payslip[]>(id ? `/api/payroll/employee/${id}/payslips` : null);
   const periods = useApi<PayrollPeriod[]>("/api/payroll/periods");
   const [saving, setSaving] = useState(false);
+  const [provisioning, setProvisioning] = useState(false);
   const [draft, setDraft] = useState<Employee | null>(null);
 
   if (employeeQuery.loading) return <LoadingState />;
@@ -58,14 +59,51 @@ export function EmployeeDetailPage() {
           <h2 className="font-display mt-2 text-3xl">
             {employee.firstName} {employee.lastName}
           </h2>
-          <div className="mt-2 flex items-center gap-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <EmployeeBadge status={employee.status} />
             <span className="text-sm text-ink/55">{employee.jobTitle}</span>
           </div>
+          <p className="mt-2 text-sm text-ink/55">
+            Microsoft Entra :{" "}
+            {employee.entraProvisioningStatus === "provisioned"
+              ? `compte lié (${employee.entraObjectId ?? "oid"})`
+              : employee.entraProvisioningStatus === "failed"
+                ? `échec — ${employee.entraProvisioningError ?? "réessayer"}`
+                : employee.entraProvisioningStatus === "pending"
+                  ? "provisionnement en cours"
+                  : employee.entraProvisioningStatus === "skipped"
+                    ? "Graph non configuré"
+                    : "non provisionné"}
+          </p>
         </div>
-        <Button onClick={() => void save()} disabled={saving}>
-          {saving ? "Sauvegarde…" : "Enregistrer le profil"}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {employee.entraProvisioningStatus !== "provisioned" ? (
+            <Button
+              variant="outline"
+              disabled={provisioning}
+              onClick={async () => {
+                if (!id) return;
+                setProvisioning(true);
+                try {
+                  const updated = await api<Employee>(`/api/employees/${id}/entra-provision`, { method: "POST" });
+                  setDraft(updated);
+                  toast.success("Compte Microsoft provisionné");
+                  await employeeQuery.reload();
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Provisionnement Microsoft impossible");
+                  await employeeQuery.reload();
+                } finally {
+                  setProvisioning(false);
+                }
+              }}
+            >
+              {provisioning ? "Provisionnement…" : "Créer le compte Microsoft"}
+            </Button>
+          ) : null}
+          <Button onClick={() => void save()} disabled={saving}>
+            {saving ? "Sauvegarde…" : "Enregistrer le profil"}
+          </Button>
+        </div>
       </div>
 
       <Card>
