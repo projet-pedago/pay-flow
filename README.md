@@ -190,7 +190,7 @@ La clé **secret** ne doit **jamais** aller dans le frontend ni dans Git. `JWT_S
 | --- | --- | --- |
 | Local | `SUPABASE_URL` vide | Email + mot de passe dans `store.json` |
 | Supabase | URL + publishable renseignés | Mot de passe vérifié chez Supabase, rôle admin / employé rattaché à la fiche locale |
-| Microsoft Entra ID | `frontend/.env.local` (`VITE_AZURE_CLIENT_ID`, `VITE_AZURE_TENANT_ID`, `VITE_AZURE_API_CLIENT_ID`) + mêmes IDs côté API (`AZURE_*`) | Bouton **Se connecter avec Microsoft**. Scope `api://{API}/access_as_user`. L’email Entra ID doit exister dans PayRollFlow. Redirect URI SPA : origine (`http://127.0.0.1:45217` et `http://localhost:45217`). Redémarrer Vite après tout changement d’env. Pas de Client Secret dans un `VITE_*`. |
+| Microsoft Entra ID | `frontend/.env.local` (`VITE_AZURE_*`) + `AZURE_*` côté API | Compte Entra + rôle applicatif `PAYFLOW_ADMIN` / `PAYFLOW_HR` / `PAYFLOW_EMPLOYEE`. Pas d’entrée obligatoire dans `store.users`. Redirect URI SPA : origine (`http://127.0.0.1:45217` et `http://localhost:45217`). |
 
 Dans les deux cas, la session navigateur est un cookie `httpOnly` (pas de jeton dans `localStorage`).
 
@@ -219,7 +219,7 @@ Dans Entra ID → App registrations → **PayFlow-Frontend** → Authentication 
 - `http://127.0.0.1:45217`
 - `http://localhost:45217`
 
-L’application API doit exposer le périmètre `access_as_user`. Le bouton **Se connecter avec Microsoft** demande `openid`, `profile` et `api://{VITE_AZURE_API_CLIENT_ID}/access_as_user`. L’email du compte Entra (ex. Test Employee) doit déjà exister dans PayRollFlow.
+L’application API doit exposer le périmètre `access_as_user` et les rôles applicatifs `PAYFLOW_ADMIN`, `PAYFLOW_HR`, `PAYFLOW_EMPLOYEE`. Le bouton **Se connecter avec Microsoft** demande `openid`, `profile` et `api://{VITE_AZURE_API_CLIENT_ID}/access_as_user`. Un compte Entra authentifié **sans** rôle PayFlow reçoit HTTP 403. L’absence d’une fiche dans `store.users` n’empêche plus la connexion.
 
 Si une erreur **AADSTS…** apparaît après le redémarrage, le code complet indique la prochaine correction (URI de redirection, consentement, audience).
 

@@ -11,7 +11,7 @@ import { useAuth } from "@/lib/auth";
 
 type Summary = {
   settings: Settings;
-  employee: Employee;
+  employee: Employee | null;
   department?: Department;
   currentPeriod: PayrollPeriod | null;
   lastPayslip: { payslip: Payslip; period?: PayrollPeriod } | null;
@@ -39,7 +39,9 @@ export function EmployeeHomePage() {
           <p className="text-sm text-white/75">Bonjour {firstName}</p>
           <h2 className="font-display mt-1 text-4xl">Votre paie, simplement</h2>
           <p className="mt-2 max-w-xl text-sm text-white/70">
-            {data.employee?.jobTitle} · {data.department?.name ?? "—"} · {data.settings.companyName}
+            {data.employee
+              ? `${data.employee.jobTitle} · ${data.department?.name ?? "—"} · ${data.settings.companyName}`
+              : `${data.settings.companyName} · compte Microsoft (fiche RH à associer)`}
           </p>
         </div>
       </FadeIn>

@@ -43,31 +43,54 @@ function emailFromClaims(claims: JWTPayload | undefined): string {
 export async function verifyMicrosoftTokens(input: {
   accessToken?: string;
   idToken?: string;
-}): Promise<{ email: string; name: string; sub: string }> {
+}): Promise<{
+  email: string;
+  name: string;
+  sub: string;
+  oid: string;
+  tenantId: string;
+  roles: string[];
+}> {
   const tid = tenant();
+
   if (!tid) {
     throw new Error("Microsoft Entra ID n’est pas configuré (AZURE_TENANT_ID)");
   }
 
   const keys = jwks(tid);
+
   let accessPayload: JWTPayload | undefined;
   let idPayload: JWTPayload | undefined;
 
   if (input.accessToken) {
     const audience = apiClientId();
-    if (!audience) throw new Error("AZURE_API_CLIENT_ID n’est pas configuré");
+
+    if (!audience) {
+      throw new Error("AZURE_API_CLIENT_ID n’est pas configuré");
+    }
+
     const { payload } = await jwtVerify(input.accessToken, keys, {
       audience: [audience, `api://${audience}`],
     });
+
     assertMicrosoftIssuer(String(payload.iss ?? ""));
+
     accessPayload = payload;
   }
 
   if (input.idToken) {
     const audience = spaClientId();
-    if (!audience) throw new Error("AZURE_CLIENT_ID n’est pas configuré");
-    const { payload } = await jwtVerify(input.idToken, keys, { audience });
+
+    if (!audience) {
+      throw new Error("AZURE_CLIENT_ID n’est pas configuré");
+    }
+
+    const { payload } = await jwtVerify(input.idToken, keys, {
+      audience,
+    });
+
     assertMicrosoftIssuer(String(payload.iss ?? ""));
+
     idPayload = payload;
   }
 
@@ -76,14 +99,41 @@ export async function verifyMicrosoftTokens(input: {
   }
 
   const email = emailFromClaims(idPayload) || emailFromClaims(accessPayload);
+
   if (!email || !email.includes("@")) {
     throw new Error("Microsoft n’a pas renvoyé d’email");
   }
 
-  const merged = { ...(accessPayload ?? {}), ...(idPayload ?? {}) } as Record<string, unknown>;
+  /*
+   * IMPORTANT :
+   * Les rôles de l'API doivent être lus en priorité
+   * depuis l'access token destiné à PayFlow.
+   */
+  const accessClaims = (accessPayload ?? {}) as Record<string, unknown>;
+  const idClaims = (idPayload ?? {}) as Record<string, unknown>;
+
+  const rawRoles = accessClaims.roles ?? idClaims.roles ?? [];
+
+  const roles = Array.isArray(rawRoles) ? rawRoles.map((role) => String(role)) : [];
+
+  const oid = String(accessClaims.oid ?? idClaims.oid ?? accessPayload?.sub ?? idPayload?.sub ?? "");
+
+  const tokenTenantId = String(accessClaims.tid ?? idClaims.tid ?? "");
+
+  if (tokenTenantId && tokenTenantId !== tid) {
+    throw new Error("Tenant Microsoft non autorisé");
+  }
+
+  const name = String(idClaims.name ?? accessClaims.name ?? email);
+
+  const sub = String(accessPayload?.sub ?? idPayload?.sub ?? oid ?? email);
+
   return {
     email,
-    name: String(merged.name ?? email),
-    sub: String((accessPayload ?? idPayload)?.sub ?? email),
+    name,
+    sub,
+    oid,
+    tenantId: tokenTenantId || tid,
+    roles,
   };
 }

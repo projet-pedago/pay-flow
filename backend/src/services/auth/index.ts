@@ -86,17 +86,49 @@ createService("payrollflow-auth", port, (app) => {
     }
     try {
       const profile = await verifyMicrosoftTokens(parsed.data);
-      const user = await tokenUserFromEmail(profile.email);
-      if (!user) {
+
+      const allowedRoles = ["PAYFLOW_ADMIN", "PAYFLOW_HR", "PAYFLOW_EMPLOYEE"] as const;
+      const entraRole = allowedRoles.find((role) => profile.roles.includes(role));
+
+      if (!entraRole) {
         recordLoginFailure(req);
         res.status(403).json({
-          error: "Compte Microsoft authentifié mais non rattaché à PayRollFlow. L’email Entra ID doit exister côté RH.",
+          error: "Votre compte Microsoft est authentifié mais aucun rôle PayFlow ne lui a été attribué.",
         });
         return;
       }
+
+      let role: "admin" | "employee";
+      switch (entraRole) {
+        case "PAYFLOW_ADMIN":
+          role = "admin";
+          break;
+        case "PAYFLOW_HR":
+          // L’app interne n’a pas encore de rôle HR distinct.
+          role = "admin";
+          break;
+        case "PAYFLOW_EMPLOYEE":
+          role = "employee";
+          break;
+        default:
+          recordLoginFailure(req);
+          res.status(403).json({ error: "Rôle Microsoft PayFlow non autorisé." });
+          return;
+      }
+
+      const user = {
+        id: profile.oid || profile.sub,
+        email: profile.email,
+        name: profile.name,
+        role,
+      };
+
       recordLoginSuccess(req);
-      setAuthCookie(res, signToken({ ...user, name: user.name || profile.name }));
-      res.json({ user: publicUser(user), provider: "microsoft" });
+      setAuthCookie(res, signToken(user));
+      res.json({
+        user: publicUser(user),
+        provider: "microsoft",
+      });
     } catch (error) {
       recordLoginFailure(req);
       res.status(401).json({ error: error instanceof Error ? error.message : "Jeton Microsoft refusé" });

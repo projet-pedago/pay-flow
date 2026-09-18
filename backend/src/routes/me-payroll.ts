@@ -28,11 +28,22 @@ mePayrollRouter.get("/payslips", (req, res) => {
 
 mePayrollRouter.get("/summary", (req, res) => {
   const user = getUser(req);
+  const store = loadStore();
   if (!user.employeeId) {
-    res.status(400).json({ error: "Ce compte n'est pas lié à une fiche employé" });
+    const sortedPeriods = [...store.periods].sort((a, b) => b.year - a.year || b.month - a.month);
+    res.json({
+      settings: store.settings,
+      employee: null,
+      department: null,
+      currentPeriod: sortedPeriods[0] ?? null,
+      lastPayslip: null,
+      payslipCount: 0,
+      ytdNet: 0,
+      leave: null,
+      pendingRequests: 0,
+    });
     return;
   }
-  const store = loadStore();
   const employee = store.employees.find((item) => item.id === user.employeeId);
   const department = store.departments.find((item) => item.id === employee?.departmentId);
   const mine = store.payslips.filter((item) => item.employeeId === user.employeeId && !item.superseded);
