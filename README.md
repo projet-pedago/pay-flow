@@ -6,24 +6,28 @@ Il n’y a **pas d’inscription en ligne**. Les comptes se créent dans Entra I
 
 ---
 
-## Démarrage en 5 minutes
+## Une commande Docker
 
-1. Dézippez **PayRollFlow.zip** (voir [Télécharger](#télécharger--ouvrir-le-projet)).
-2. Installez **Node.js 22+**.
-3. Deux terminaux :
+Prérequis : [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows / macOS) ou Docker Engine + Compose (Linux).
 
-```bash
-cd backend && npm install && npm run dev
-```
+1. Téléchargez le ZIP GitHub (**Code → Download ZIP**) et dézippez-le.
+2. Ouvrez un terminal **dans le dossier du projet** (`pay-flow-main` ou `pay-flow`).
+3. Une seule commande :
 
 ```bash
-cd frontend && npm install && npm run dev
+docker compose up --build
 ```
+
+Cette commande télécharge les images de base (`node`, `nginx`), construit les 6 services (`auth`, `hr`, `payroll`, `time`, `gateway`, `frontend`) et les démarre.
 
 4. Ouvrez **http://127.0.0.1:45217/login**
 5. Cliquez **Se connecter avec Microsoft**. Les rôles Entra `PAYFLOW_ADMIN`, `PAYFLOW_HR` et `PAYFLOW_EMPLOYEE` ouvrent `/admin`, `/rh` et `/espace`.
 
-Renseignez `frontend/.env.local` et `backend/.env` (voir [Microsoft Entra ID](#microsoft-entra-id)). Pour la liste des comptes dans Admin / RH, ajoutez aussi `AZURE_GRAPH_CLIENT_ID` et `AZURE_GRAPH_CLIENT_SECRET` (PayFlow-Provisioning, lecture seule).
+Arrêt : `Ctrl + C`, puis `docker compose down` si vous voulez aussi supprimer les conteneurs. Les données restent dans le volume `payroll-data`.
+
+Relance plus tard (images déjà construites) : `docker compose up`.
+
+Aucun `npm install` n’est nécessaire avec Docker. Un fichier `.env` n’est pas obligatoire : les identifiants Entra publics sont déjà dans `docker-compose.yml`. Pour la liste Admin / RH des comptes PayFlow, copiez `.env.example` vers `.env` et renseignez `AZURE_GRAPH_CLIENT_SECRET`.
 
 ---
 
@@ -95,8 +99,8 @@ Logo.dev, Pexels, LottieFiles et Aceternity UI complet restent optionnels : ils 
 
 ## Prérequis
 
-- **Node.js 22+** et **npm**
-- (optionnel) **Docker Desktop** pour `docker compose`
+- **Docker Desktop** (recommandé) — une commande lance toute l’application
+- (optionnel) **Node.js 22+** si vous préférez `npm run dev` sans Docker
 - (optionnel) un projet **Supabase** (Auth email + mot de passe)
 
 Windows : préférez **WSL2 (Ubuntu)** + Node installé **dans WSL**, pas Git Bash seul.
@@ -110,12 +114,12 @@ npm -v
 
 ## Télécharger / ouvrir le projet
 
-L’archive **PayRollFlow.zip** contient le code source (README, frontend, backend, Docker). Elle **n’inclut pas** :
+L’archive **PayRollFlow.zip** (GitHub → Code → Download ZIP) contient le code source, les Dockerfiles et `docker-compose.yml`. Elle **n’inclut pas** :
 
-- `node_modules/` (à installer avec `npm install`)
+- `node_modules/` (Docker les installe pendant `docker compose up --build`)
 - `.git/`
-- `frontend/.env` et `backend/.env` (secrets — copiez les `.env.example`)
-- `backend/data/store.json` (régénéré au premier `npm run dev`)
+- `.env` (secrets Graph — optionnel, voir `.env.example`)
+- `backend/data/store.json` (créé dans le volume Docker au premier lancement)
 
 ### Windows (Explorateur)
 
@@ -299,9 +303,9 @@ Même URL / publishable dans `backend/.env`. La secret se copie depuis **Supabas
 
 ---
 
-## Lancer en local (recommandé)
+## Lancer sans Docker (Node.js)
 
-Deux terminaux, **depuis la racine du projet dézippé**.
+Deux terminaux, **depuis la racine du projet dézippé**. Nécessite Node.js 22+.
 
 **Terminal 1 — API** (auth `:45231`, RH `:45232`, paie `:45233`, temps `:45234`, passerelle `:45218`)
 
@@ -345,23 +349,29 @@ Cela régénère `store.json` (départements + barème, fiches vides). Les compt
 
 ## Docker
 
-À la racine du projet :
+Commande unique, à la racine du ZIP décompressé :
 
 ```bash
-cp backend/.env.example .env
-# remplissez SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_SECRET_KEY
 docker compose up --build
 ```
 
-- Interface : http://127.0.0.1:45217
-- API : http://127.0.0.1:45218
+| Service Compose | Conteneur | Rôle | Port hôte |
+| --- | --- | --- | --- |
+| `frontend` | payrollflow-web | Interface Nginx | **45217** |
+| `gateway` | payrollflow-gateway | Passerelle API | **45218** |
+| `auth` | payrollflow-auth | Connexion Microsoft | interne |
+| `hr` | payrollflow-hr | Fiches, Entra Graph | interne |
+| `payroll` | payrollflow-payroll | Paie, bulletins | interne |
+| `time` | payrollflow-time | Congés, dossiers | interne |
 
-Les clés frontend (`VITE_…`) sont injectées **au build** de l’image à partir du `.env` racine (`SUPABASE_*`, `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_API_CLIENT_ID`). Un `.env.local` Vite n’est **pas** lu dans l’image déjà construite. Après un changement Azure / Supabase :
+- Application : http://127.0.0.1:45217
+- Santé API : http://127.0.0.1:45218/api/health
+
+Les identifiants SPA Entra (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_API_CLIENT_ID`) sont fournis par défaut au **build** du frontend. Un `.env.local` Vite n’est **pas** lu dans l’image. Après un changement Azure :
 
 ```bash
 docker compose down
-docker compose build --no-cache frontend
-docker compose up -d
+docker compose up --build
 ```
 
 Arrêt : `docker compose down`. Les données JSON vivent dans le volume Docker `payroll-data`.
@@ -469,7 +479,8 @@ Les champs société se règlent dans **Paramètres**. Les champs individuels (m
 | Données bizarres | Admin → Paramètres → Vider les données métier |
 | Windows, `npm` introuvable | Installer Node **dans WSL**, lancer les commandes depuis Ubuntu |
 | `unzip` introuvable (WSL) | `sudo apt update && sudo apt install unzip` |
-| Docker : frontend sans login Supabase | Les `VITE_*` sont figés au `docker compose up --build` : reconstruire après changement de `.env` |
+| Docker : `port is already allocated` | Un `npm run dev` occupe déjà 45217/45218 : arrêtez-le, ou `docker compose down` puis relancez |
+| Docker : frontend sans login Microsoft | Les `VITE_AZURE_*` sont figés au `docker compose up --build` : reconstruire après changement de `.env` |
 
 ---
 
