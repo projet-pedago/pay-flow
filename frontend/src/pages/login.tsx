@@ -1,37 +1,15 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useMsal } from "@azure/msal-react";
 import { toast } from "sonner";
 import { BrandLogo, TechIcon } from "@/components/brand-logo";
 import { FadeIn } from "@/components/fade-in";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useAuth } from "@/lib/auth";
-import { homePath } from "@/lib/roles";
 import { loginRequest } from "@/lib/msal";
 import { ecosystemLogos, photos, stackLogos } from "@/lib/media";
 
 export function LoginPage() {
-  const { login } = useAuth();
   const { instance } = useMsal();
-  const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [saving, setSaving] = useState(false);
   const [microsoftSaving, setMicrosoftSaving] = useState(false);
-
-  async function submit() {
-    setSaving(true);
-    try {
-      const user = await login(email, password);
-      navigate(homePath(user.role), { replace: true });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Connexion impossible");
-    } finally {
-      setSaving(false);
-    }
-  }
 
   async function loginWithMicrosoft() {
     setMicrosoftSaving(true);
@@ -56,17 +34,17 @@ export function LoginPage() {
           <p className="text-xs font-semibold tracking-[0.28em] text-gold uppercase">ANTARES DS · bulletin officiel</p>
           <h1 className="font-display mt-4 max-w-md text-5xl">PayRollFlow</h1>
           <p className="mt-4 max-w-sm text-white/75">
-            Accès nominatif. Les comptes sont créés par le service RH — il n’y a pas d’inscription en ligne.
+            Les comptes se créent dans Microsoft Entra ID. Seuls les rôles PayFlow (Admin, RH, Employé) ouvrent l’application.
           </p>
         </FadeIn>
         <FadeIn delay={0.12} className="relative grid gap-4">
           <div className="rounded-3xl border border-white/10 bg-white/8 p-5 backdrop-blur-sm">
             <p className="text-sm font-semibold">Côté admin</p>
-            <p className="mt-1 text-sm text-white/70">Masse salariale, cycles, validation, réseau et factures.</p>
+            <p className="mt-1 text-sm text-white/70">Tous les comptes PayFlow Entra : Admin, RH et Employés.</p>
           </div>
           <div className="rounded-3xl border border-white/10 bg-white/8 p-5 backdrop-blur-sm">
-            <p className="text-sm font-semibold">Côté collaborateur</p>
-            <p className="mt-1 text-sm text-white/70">Espace personnel : bulletins, net à payer, coordonnées.</p>
+            <p className="text-sm font-semibold">Côté RH</p>
+            <p className="mt-1 text-sm text-white/70">Uniquement les comptes Entra PAYFLOW_EMPLOYEE.</p>
           </div>
           <div>
             <p className="mb-3 text-[10px] font-semibold tracking-[0.2em] text-white/45 uppercase">Référentiels</p>
@@ -78,15 +56,15 @@ export function LoginPage() {
                 </div>
               ))}
             </div>
-            <p className="mt-5 mb-3 text-[10px] font-semibold tracking-[0.2em] text-white/45 uppercase">Stack</p>
-            <div className="flex flex-wrap gap-2">
-              {stackLogos.map((item) => (
-                <div key={item.slug} className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5">
-                  <TechIcon name={item.name} slug={item.slug} />
-                  <span className="text-xs text-white/80">{item.name}</span>
-                </div>
-              ))}
-            </div>
+          </div>
+          <p className="mt-5 mb-3 text-[10px] font-semibold tracking-[0.2em] text-white/45 uppercase">Stack</p>
+          <div className="flex flex-wrap gap-2">
+            {stackLogos.map((item) => (
+              <div key={item.slug} className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5">
+                <TechIcon name={item.name} slug={item.slug} />
+                <span className="text-xs text-white/80">{item.name}</span>
+              </div>
+            ))}
           </div>
         </FadeIn>
       </section>
@@ -95,44 +73,18 @@ export function LoginPage() {
         <FadeIn className="mx-auto w-full max-w-md" delay={0.08}>
           <p className="text-xs font-semibold tracking-[0.22em] text-sage uppercase lg:hidden">PayRollFlow</p>
           <h2 className="font-display mt-2 text-4xl">Connexion</h2>
-          <p className="mt-2 text-sm text-ink/55">Utilisez le compte fourni par votre administrateur. Pas d’inscription en ligne.</p>
-
-          <form
-            className="mt-8 space-y-4"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void submit();
-            }}
-          >
-            <div>
-              <Label>Email professionnel</Label>
-              <Input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />
-            </div>
-            <div>
-              <Label>Mot de passe</Label>
-              <Input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-            </div>
-            <Button className="w-full" type="submit" disabled={saving || microsoftSaving}>
-              {saving ? "Connexion…" : "Entrer"}
-            </Button>
-          </form>
-
-          <div className="my-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-ink/10" />
-            <span className="text-xs text-ink/40">ou</span>
-            <div className="h-px flex-1 bg-ink/10" />
-          </div>
-
+          <p className="mt-2 text-sm text-ink/55">
+            Uniquement Microsoft Entra ID. Pas de compte de démonstration, pas d’inscription en ligne.
+          </p>
           <Button
             type="button"
-            variant="outline"
-            className="w-full"
-            disabled={saving || microsoftSaving}
+            className="mt-8 w-full"
+            disabled={microsoftSaving}
             onClick={() => void loginWithMicrosoft()}
           >
             {microsoftSaving ? "Connexion Microsoft…" : "Se connecter avec Microsoft"}
           </Button>
-          <p className="mt-3 text-center text-xs text-ink/40">Connexion sécurisée avec Microsoft Entra ID</p>
+          <p className="mt-3 text-center text-xs text-ink/40">PAYFLOW_ADMIN · PAYFLOW_HR · PAYFLOW_EMPLOYEE</p>
         </FadeIn>
       </section>
     </div>

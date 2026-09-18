@@ -14,6 +14,7 @@ import { EmployeePayslipsPage } from "@/pages/employee-payslips";
 import { EmployeeProfilePage } from "@/pages/employee-profile";
 import { EmployeeRequestsPage } from "@/pages/employee-requests";
 import { EmployeesPage } from "@/pages/employees";
+import { EntraUsersPage } from "@/pages/entra-users";
 import { AdvancesPage } from "@/pages/advances";
 import { DocumentsPage } from "@/pages/documents";
 import { LeavesPage } from "@/pages/leaves";
@@ -68,6 +69,7 @@ export default function App() {
             }
           />
           <Route path="/admin" element={<AdminShell><DashboardPage /></AdminShell>} />
+          <Route path="/admin/utilisateurs" element={<AdminShell><EntraUsersPage /></AdminShell>} />
           <Route path="/admin/employes" element={<AdminShell><EmployeesPage /></AdminShell>} />
           <Route path="/admin/employes/:id" element={<AdminShell><EmployeeDetailPage /></AdminShell>} />
           <Route path="/admin/departements" element={<AdminShell><DepartmentsPage /></AdminShell>} />
@@ -82,8 +84,10 @@ export default function App() {
           <Route path="/admin/dossiers" element={<AdminShell><DocumentsPage /></AdminShell>} />
           <Route path="/admin/attestations/:employeeId/:kind" element={<AdminShell><AttestationPage /></AdminShell>} />
           <Route path="/admin/parametres" element={<AdminShell><SettingsPage /></AdminShell>} />
-          <Route path="/rh" element={<HrShell><EmployeesPage /></HrShell>} />
-          <Route path="/rh/employes" element={<HrShell><EmployeesPage /></HrShell>} />
+          <Route path="/rh" element={<HrShell><EntraUsersPage /></HrShell>} />
+          <Route path="/rh/employes" element={<HrShell><EntraUsersPage /></HrShell>} />
+          <Route path="/rh/fiches" element={<HrShell><EmployeesPage /></HrShell>} />
+          <Route path="/rh/fiches/:id" element={<HrShell><EmployeeDetailPage /></HrShell>} />
           <Route path="/rh/employes/:id" element={<HrShell><EmployeeDetailPage /></HrShell>} />
           <Route path="/rh/departements" element={<HrShell><DepartmentsPage /></HrShell>} />
           <Route path="/rh/conges" element={<HrShell><LeavesPage /></HrShell>} />

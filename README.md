@@ -1,8 +1,8 @@
 # PayRollFlow
 
-Application de **gestion de paie** (console RH + espace collaborateur) avec **bulletins officiels français A4**, API en microservices, et **connexion Supabase Auth** (ou login local de secours).
+Application de **gestion de paie** (console admin, console RH, espace collaborateur) avec **bulletins officiels français A4**, API en microservices, et **connexion Microsoft Entra ID**.
 
-Il n’y a **pas d’inscription en ligne**. Les comptes sont créés par le service RH (ou par le jeu de démo).
+Il n’y a **pas d’inscription en ligne**. Les comptes se créent dans Entra ID, avec un rôle applicatif PayFlow.
 
 ---
 
@@ -21,14 +21,9 @@ cd frontend && npm install && npm run dev
 ```
 
 4. Ouvrez **http://127.0.0.1:45217/login**
-5. Connectez-vous :
+5. Cliquez **Se connecter avec Microsoft**. Les rôles Entra `PAYFLOW_ADMIN`, `PAYFLOW_HR` et `PAYFLOW_EMPLOYEE` ouvrent `/admin`, `/rh` et `/espace`.
 
-| Rôle | Email | Mot de passe |
-| --- | --- | --- |
-| Admin | `admin@payrollflow.demo` | `AdminHorizon2026!` |
-| Salarié (bulletin PDF août 2026) | `yao.lassidan@payrollflow.demo` | `Horizon2026!` |
-
-Sans fichiers `.env`, le login utilise le **jeu local** (JSON + mots de passe hashés). Avec Supabase, copiez `frontend/.env.example` et `backend/.env.example` (détail plus bas).
+Renseignez `frontend/.env.local` et `backend/.env` (voir [Microsoft Entra ID](#microsoft-entra-id)). Pour la liste des comptes dans Admin / RH, ajoutez aussi `AZURE_GRAPH_CLIENT_ID` et `AZURE_GRAPH_CLIENT_SECRET` (PayFlow-Provisioning, lecture seule).
 
 ---
 
@@ -184,15 +179,14 @@ SUPABASE_SECRET_KEY=sb_secret_...
 JWT_SECRET=  # openssl rand -base64 32 — obligatoire en production (≥ 16 caractères)
 ```
 
-La clé **secret** ne doit **jamais** aller dans le frontend ni dans Git. `JWT_SECRET` signe le cookie httpOnly du login local : en production l’API refuse de démarrer s’il est absent ou trop court.
+La clé **secret** ne doit **jamais** aller dans le frontend ni dans Git. `JWT_SECRET` signe le cookie httpOnly : en production l’API refuse de démarrer s’il est absent ou trop court.
 
 | Mode | Quand | Comportement |
 | --- | --- | --- |
-| Local | `SUPABASE_URL` vide | Email + mot de passe dans `store.json` |
-| Supabase | URL + publishable renseignés | Mot de passe vérifié chez Supabase, rôle admin / employé rattaché à la fiche locale |
-| Microsoft Entra ID | `frontend/.env.local` (`VITE_AZURE_*`) + `AZURE_*` côté API | Compte Entra + rôle applicatif `PAYFLOW_ADMIN` / `PAYFLOW_HR` / `PAYFLOW_EMPLOYEE`. Pas d’entrée obligatoire dans `store.users`. Redirect URI SPA : origine (`http://127.0.0.1:45217` et `http://localhost:45217`). |
+| Microsoft Entra ID | `frontend/.env.local` (`VITE_AZURE_*`) + `AZURE_*` côté API | Seule connexion. Rôle applicatif `PAYFLOW_ADMIN` / `PAYFLOW_HR` / `PAYFLOW_EMPLOYEE`. Redirect URI SPA : origine (`http://127.0.0.1:45217` et `http://localhost:45217`). |
+| Lecture Graph | `AZURE_GRAPH_CLIENT_ID` + `AZURE_GRAPH_CLIENT_SECRET` (PayFlow-Provisioning) | Liste Admin / RH des comptes Entra ayant un rôle PayFlow. Jamais dans `VITE_*`. |
 
-Dans les deux cas, la session navigateur est un cookie `httpOnly` (pas de jeton dans `localStorage`).
+La connexion email / mot de passe de démonstration (`@payrollflow.demo`, `store.users`) n’existe plus. La session navigateur est un cookie `httpOnly`.
 
 ### Microsoft Entra ID
 
@@ -212,6 +206,8 @@ VITE_AZURE_API_CLIENT_ID=
 AZURE_CLIENT_ID=
 AZURE_TENANT_ID=
 AZURE_API_CLIENT_ID=
+AZURE_GRAPH_CLIENT_ID=
+AZURE_GRAPH_CLIENT_SECRET=
 ```
 
 Dans Entra ID → App registrations → **PayFlow-Frontend** → Authentication → Single-page application, ajoutez :
@@ -219,9 +215,19 @@ Dans Entra ID → App registrations → **PayFlow-Frontend** → Authentication 
 - `http://127.0.0.1:45217`
 - `http://localhost:45217`
 
-L’application API doit exposer le périmètre `access_as_user` et les rôles applicatifs `PAYFLOW_ADMIN`, `PAYFLOW_HR`, `PAYFLOW_EMPLOYEE`. Le bouton **Se connecter avec Microsoft** demande `openid`, `profile` et `api://{VITE_AZURE_API_CLIENT_ID}/access_as_user`. Un compte Entra authentifié **sans** rôle PayFlow reçoit HTTP 403. L’absence d’une fiche dans `store.users` n’empêche plus la connexion.
+L’application API doit exposer le périmètre `access_as_user` et les rôles applicatifs `PAYFLOW_ADMIN`, `PAYFLOW_HR`, `PAYFLOW_EMPLOYEE`. Le bouton **Se connecter avec Microsoft** demande `openid`, `profile` et `api://{VITE_AZURE_API_CLIENT_ID}/access_as_user`. Un compte Entra authentifié **sans** rôle PayFlow reçoit HTTP 403.
 
-Les comptes de connexion se créent **uniquement dans Microsoft Entra ID**. `POST /api/employees` crée une fiche RH, pas un compte. Les rôles `PAYFLOW_ADMIN`, `PAYFLOW_HR` et `PAYFLOW_EMPLOYEE` ouvrent respectivement `/admin`, `/rh` et `/espace`.
+Les comptes de connexion se créent **uniquement dans Microsoft Entra ID**. `GET /api/entra/users` lit Graph (application **PayFlow-Provisioning**, lecture seule) et n’affiche que les utilisateurs auxquels un rôle PayFlow a été attribué :
+
+| Connecté comme | Comptes visibles |
+| --- | --- |
+| ADMIN | PAYFLOW_ADMIN + PAYFLOW_HR + PAYFLOW_EMPLOYEE |
+| RH | PAYFLOW_EMPLOYEE uniquement |
+| EMPLOYEE | 403 — aucune liste |
+
+Permissions Graph minimales : `User.Read.All`, `AppRoleAssignment.Read.All`, `Application.Read.All` (ou `Directory.Read.All`). Aucune écriture Entra.
+
+`POST /api/employees` crée une fiche RH, pas un compte. Les rôles `PAYFLOW_ADMIN`, `PAYFLOW_HR` et `PAYFLOW_EMPLOYEE` ouvrent respectivement `/admin`, `/rh` et `/espace`.
 
 Un salarié n’est pas identifié par son email RH. La chaîne est :
 
@@ -231,7 +237,7 @@ Si l’UPN Entra (`emp-01@…onmicrosoft.com`) diffère de l’email de la fiche
 
 Si une erreur **AADSTS…** apparaît après le redémarrage, le code complet indique la prochaine correction (URI de redirection, consentement, audience).
 
-Sans secret, le **login** fonctionne. La secret sert surtout à **créer un compte Auth** quand un admin ajoute un employé.
+Sans secret Graph, le **login Microsoft** fonctionne. Le secret de **PayFlow-Provisioning** sert uniquement à **lire** l’annuaire des rôles PayFlow (`GET /api/entra/users`). Jamais dans `VITE_*`.
 
 ### Projet de démo déjà branché
 
@@ -315,45 +321,16 @@ Arrêt : `docker compose down`. Les données JSON vivent dans le volume Docker `
 
 ---
 
-## Comptes de démonstration
+## Comptes
 
-Pas d’inscription. Mot de passe unique pour tous les collaborateurs.
+Pas d’inscription, pas de login email/mot de passe. Les comptes visibles dans PayRollFlow sont ceux d’Entra ID auxquels un rôle PayFlow a été attribué.
 
-| Rôle | Email | Mot de passe | Après connexion |
-| --- | --- | --- | --- |
-| Administrateur | `admin@payrollflow.demo` | `AdminHorizon2026!` | `/admin` |
-| Bulletin officiel (référence PDF) | `yao.lassidan@payrollflow.demo` | `Horizon2026!` | `/espace` → **Mes bulletins → août 2026** |
-| Directrice | `aminata.diallo@payrollflow.demo` | `Horizon2026!` | `/espace` |
-| Autres salariés | liste ci-dessous | `Horizon2026!` | `/espace` |
-
-**Autres emails démo :**
-
-- `jp.kouame@payrollflow.demo`
-- `fatou.ndiaye@payrollflow.demo`
-- `hugo.bernard@payrollflow.demo`
-- `aicha.traore@payrollflow.demo`
-- `lea.moreau@payrollflow.demo`
-- `omar.benali@payrollflow.demo`
-- `camille.roux@payrollflow.demo`
-- `kwame.mensah@payrollflow.demo`
-- `sofia.martins@payrollflow.demo`
-- `yanis.haddad@payrollflow.demo`
-- `ines.petit@payrollflow.demo`
-
-Ces comptes existent dans **Supabase Auth** du projet de démo (emails confirmés).
-
-Sur un **nouveau** projet Supabase :
-
-1. Authentication → Users → Add user (email confirmé)
-2. `app_metadata` : `{ "role": "admin" }` ou `{ "role": "employee" }`
-3. L’email doit correspondre à une fiche dans `store.json` (ou créez l’employé depuis l’admin)
-
-Sinon, laissez les variables Supabase vides et utilisez le **login local**.
+Les fiches `employees[]` (paie, bulletins, congés) restent des objets métier distincts. On ne les efface pas automatiquement : une fiche n’est pas un compte utilisateur.
 
 ### Bulletin à l’identique du PDF
 
-1. Connectez-vous en `yao.lassidan@payrollflow.demo`
-2. **Mes bulletins → août 2026**
+1. Associez un compte Entra `PAYFLOW_EMPLOYEE` à la fiche Yao Lassidan, ou ouvrez la fiche côté admin.
+2. **Mes bulletins → août 2026** (espace collaborateur) ou **Cycles de paie → août 2026** (admin).
 3. **Imprimer / PDF**
 
 Société affichée : ANTARES DS, matricule **1212**, période **01/08/26 – 31/08/26**, net **704,88**.
@@ -367,19 +344,19 @@ Côté admin : **Cycles de paie → août 2026 → bulletin de Yao Lassidan**.
 ```
 Navigateur :45217
     └─ /api/*  →  passerelle :45218
-                     ├─ auth     :45231   POST /api/auth/login  GET /api/auth/me
-                     ├─ hr       :45232   employés, départements, profil
+                     ├─ auth     :45231   POST /api/auth/microsoft  GET /api/auth/me
+                     ├─ hr       :45232   entra/users, fiches, départements, profil
                      ├─ payroll  :45233   cycles, bulletins, acomptes, settings, dashboard
                      └─ time     :45234   congés, dossiers, notifications
 ```
 
-Toutes les routes (sauf login / health) exigent le cookie httpOnly `payrollflow_token` (posé à la connexion, y compris si Supabase vérifie le mot de passe). 5 échecs de login sur 15 min (IP + email) → HTTP 429.
+Toutes les routes (sauf health) exigent le cookie httpOnly `payrollflow_token`. 5 échecs de login Microsoft sur 15 min (IP) → HTTP 429.
 
 | Méthode | Chemin | Usage |
 | --- | --- | --- |
-| POST | `/api/auth/login` | Email + mot de passe |
 | POST | `/api/auth/microsoft` | Jeton d’accès Entra (`access_as_user`) → session cookie |
 | GET | `/api/auth/me` | Session courante |
+| GET | `/api/entra/users` | Comptes Entra ayant un rôle PayFlow (admin : tous, RH : employés, salarié : 403) |
 | GET/POST/PUT | `/api/employees` | Fiches RH (admin) |
 | POST | `/api/employees/import` | Import CSV |
 | GET/POST | `/api/payroll/periods` | Cycles |
@@ -395,14 +372,12 @@ Toutes les routes (sauf login / health) exigent le cookie httpOnly `payrollflow_
 | GET | `/api/documents` | Dossier RH |
 | GET | `/api/notifications` | Cloche |
 
-Exemple de login **local** (cookie, sans token dans le JSON) :
+Exemple : session Microsoft déjà posée (cookie) puis liste Entra :
 
 ```bash
 curl -s http://127.0.0.1:45218/api/health
-curl -c /tmp/pf.jar -s -X POST http://127.0.0.1:45218/api/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"admin@payrollflow.demo","password":"AdminHorizon2026!"}'
 curl -b /tmp/pf.jar -s http://127.0.0.1:45218/api/auth/me
+curl -b /tmp/pf.jar -s http://127.0.0.1:45218/api/entra/users
 ```
 
 ### Import CSV employés

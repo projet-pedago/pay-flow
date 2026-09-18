@@ -13,7 +13,6 @@ export type SessionUser = {
 type AuthContextValue = {
   user: SessionUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<SessionUser>;
   loginMicrosoft: (tokens: { accessToken: string; idToken?: string }) => Promise<SessionUser>;
   refresh: () => Promise<SessionUser | null>;
   logout: () => void;
@@ -53,15 +52,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       refresh,
-      async login(email, password) {
-        await api("/api/auth/login", {
-          method: "POST",
-          body: JSON.stringify({ email, password }),
-        });
-        const me = await refresh();
-        if (!me) throw new Error("Session introuvable après connexion");
-        return me;
-      },
       async loginMicrosoft(tokens) {
         await api("/api/auth/microsoft", {
           method: "POST",

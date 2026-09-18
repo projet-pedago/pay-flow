@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { money, monthLabel } from "@/lib/format";
-import { staffBase } from "@/lib/roles";
+import { ficheBase, staffBase } from "@/lib/roles";
 import type { Department, Employee, PayrollPeriod, Payslip, Settings } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
 import { EmployeeForm } from "@/pages/employees";
@@ -19,6 +19,7 @@ export function EmployeeDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
   const base = staffBase(user?.role === "hr" ? "hr" : "admin");
+  const fiches = ficheBase(user?.role === "hr" ? "hr" : "admin");
   const isAdmin = user?.role === "admin";
   const employeeQuery = useApi<Employee>(id ? `/api/employees/${id}` : null);
   const departments = useApi<Department[]>("/api/departments");
@@ -59,8 +60,8 @@ export function EmployeeDetailPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Link to={`${base === "/rh" ? "/rh" : `${base}/employes`}`} className="text-sm text-sage hover:underline">
-            ← Tous les employés
+          <Link to={fiches} className="text-sm text-sage hover:underline">
+            ← Toutes les fiches
           </Link>
           <h2 className="font-display mt-2 text-3xl">
             {employee.firstName} {employee.lastName}

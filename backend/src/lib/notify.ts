@@ -19,12 +19,13 @@ export function pushNotification(
 }
 
 export function notifyAdmins(store: Store, input: { title: string; body: string; link: string }): void {
-  store.users.filter((user) => user.role === "admin" || user.role === "hr").forEach((user) => {
-    pushNotification(store, { ...input, userId: user.id });
-  });
+  for (const userId of ["role:admin", "role:hr"]) {
+    pushNotification(store, { ...input, userId });
+  }
 }
 
 export function notifyEmployee(store: Store, employeeId: string, input: { title: string; body: string; link: string }): void {
-  const user = store.users.find((item) => item.employeeId === employeeId);
-  if (user) pushNotification(store, { ...input, userId: user.id });
+  const employee = store.employees.find((item) => item.id === employeeId);
+  const userId = employee?.entraObjectId;
+  if (userId) pushNotification(store, { ...input, userId });
 }

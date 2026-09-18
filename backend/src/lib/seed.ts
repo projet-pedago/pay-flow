@@ -1,9 +1,3 @@
-import {
-  DEMO_ADMIN_EMAIL,
-  DEMO_ADMIN_PASSWORD,
-  DEMO_EMPLOYEE_PASSWORD,
-} from "../auth-constants.js";
-import { hashPassword } from "../auth.js";
 import type { AuthUser, Civility, Employee, Store } from "../types.js";
 import { calculatePayslip } from "./payroll.js";
 
@@ -193,7 +187,7 @@ export function createSeed(): Store {
     rates,
     periods,
     payslips,
-    users: buildUsers(employees),
+    users: [],
     leaves: buildLeaves(),
     advances: buildAdvances(),
     documents: buildDocuments(employees),
@@ -332,28 +326,8 @@ function buildDocuments(employees: Employee[]) {
   );
 }
 
-export function buildUsers(employees: Employee[]): AuthUser[] {
-  const employeeHash = hashPassword(DEMO_EMPLOYEE_PASSWORD);
-  const users: AuthUser[] = [
-    {
-      id: "usr-admin",
-      email: DEMO_ADMIN_EMAIL,
-      passwordHash: hashPassword(DEMO_ADMIN_PASSWORD),
-      role: "admin",
-      name: "Nadia Koné",
-    },
-  ];
-  employees.forEach((employee, index) => {
-    users.push({
-      id: `usr-${String(index + 1).padStart(3, "0")}`,
-      email: employee.email,
-      passwordHash: employeeHash,
-      role: "employee",
-      name: `${employee.firstName} ${employee.lastName}`,
-      employeeId: employee.id,
-    });
-  });
-  return users;
+export function buildUsers(_employees: Employee[]): AuthUser[] {
+  return [];
 }
 
 export function buildNetwork() {

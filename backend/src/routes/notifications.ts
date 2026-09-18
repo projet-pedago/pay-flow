@@ -8,7 +8,12 @@ notificationsRouter.use(requireAuth);
 notificationsRouter.get("/", (req, res) => {
   const user = getUser(req);
   const items = loadStore()
-    .notifications.filter((item) => item.userId === user.id)
+    .notifications.filter((item) => {
+      if (item.userId === user.id) return true;
+      if (user.role === "admin" && item.userId === "role:admin") return true;
+      if (user.role === "hr" && item.userId === "role:hr") return true;
+      return false;
+    })
     .slice(0, 40);
   res.json({
     items,

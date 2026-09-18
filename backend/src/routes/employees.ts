@@ -284,11 +284,6 @@ employeesRouter.put("/:id", (req, res) => {
       patch.entraUserPrincipalName = upn;
     }
     store.employees[index] = { ...store.employees[index], ...patch };
-    const user = store.users.find((item) => item.employeeId === req.params.id);
-    if (user) {
-      user.email = store.employees[index].email;
-      user.name = `${store.employees[index].firstName} ${store.employees[index].lastName}`;
-    }
     return { employee: store.employees[index] };
   });
   if (!updated) {
@@ -308,7 +303,6 @@ employeesRouter.delete("/:id", (req, res) => {
     if (index < 0) return false;
     store.employees.splice(index, 1);
     store.payslips = store.payslips.filter((item) => item.employeeId !== req.params.id);
-    store.users = store.users.filter((item) => item.employeeId !== req.params.id);
     return true;
   });
   if (!removed) {

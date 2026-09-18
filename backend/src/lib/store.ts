@@ -3,7 +3,7 @@ import { closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, s
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Store } from "../types.js";
-import { buildNetwork, buildUsers, createSeed } from "./seed.js";
+import { buildNetwork, createSeed } from "./seed.js";
 
 const dataDir = process.env.DATA_DIR ?? join(dirname(fileURLToPath(import.meta.url)), "../../data");
 const storePath = join(dataDir, "store.json");
@@ -68,8 +68,12 @@ function readAndMigrate(): Store {
   }
   const store = JSON.parse(readFileSync(storePath, "utf8")) as Store;
   let dirty = false;
-  if (!store.users?.length) {
-    store.users = buildUsers(store.employees);
+  if (store.users?.length) {
+    store.users = [];
+    dirty = true;
+  }
+  if (!Array.isArray(store.users)) {
+    store.users = [];
     dirty = true;
   }
   if (!Array.isArray(store.leaves)) {

@@ -13,7 +13,7 @@ import { Select } from "@/components/ui/select";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { initials, money } from "@/lib/format";
-import { staffBase } from "@/lib/roles";
+import { ficheBase } from "@/lib/roles";
 import type { Civility, ContractType, Department, Employee, EmployeeDraft, EmployeeStatus, Settings } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
 
@@ -50,7 +50,7 @@ const emptyForm = {
 
 export function EmployeesPage() {
   const { user } = useAuth();
-  const base = staffBase(user?.role === "hr" ? "hr" : "admin");
+  const fiches = ficheBase(user?.role === "hr" ? "hr" : "admin");
   const employees = useApi<Employee[]>("/api/employees");
   const departments = useApi<Department[]>("/api/departments");
   const settings = useApi<{ settings: Settings }>("/api/settings");
@@ -107,9 +107,9 @@ export function EmployeesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="font-display text-3xl sm:text-4xl">Employés</h2>
+          <h2 className="font-display text-3xl sm:text-4xl">Fiches RH</h2>
           <p className="mt-2 text-sm text-ink/60">
-            {filtered.length} profil{filtered.length > 1 ? "s" : ""} · recherche et filtres appliqués instantanément.
+            {filtered.length} fiche{filtered.length > 1 ? "s" : ""} salarié{filtered.length > 1 ? "s" : ""} · paie, contrat et association Microsoft.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -237,7 +237,7 @@ export function EmployeesPage() {
           filtered.map((employee) => (
             <Link
               key={employee.id}
-              to={`${base}/employes/${employee.id}`}
+              to={`${fiches}/${employee.id}`}
               className="grid gap-2 border-b border-ink/6 px-5 py-4 transition last:border-b-0 hover:bg-paper/70 md:grid-cols-[2fr_1.2fr_1fr_1fr_1fr_auto] md:items-center"
             >
               <div className="flex items-center gap-3">

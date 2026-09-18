@@ -1,4 +1,4 @@
-import { Banknote, Building2, Calculator, CalendarDays, FolderOpen, LayoutDashboard, LogOut, Menu, Network, Settings2, Sparkles, Users, Wallet, X } from "lucide-react";
+import { Banknote, Building2, Calculator, CalendarDays, FolderOpen, LayoutDashboard, LogOut, Menu, Network, Settings2, Sparkles, UserRound, Users, Wallet, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { NotificationBell } from "@/components/notification-bell";
@@ -8,7 +8,8 @@ import { cn } from "@/lib/utils";
 
 const adminLinks = [
   { to: "/admin", label: "Pilotage", icon: LayoutDashboard },
-  { to: "/admin/employes", label: "Employés", icon: Users },
+  { to: "/admin/utilisateurs", label: "Utilisateurs", icon: UserRound },
+  { to: "/admin/employes", label: "Fiches RH", icon: Users },
   { to: "/admin/departements", label: "Départements", icon: Building2 },
   { to: "/admin/paie", label: "Cycles de paie", icon: Wallet },
   { to: "/admin/calcul", label: "Calcul bulletin", icon: Calculator },
@@ -21,7 +22,8 @@ const adminLinks = [
 ];
 
 const hrLinks = [
-  { to: "/rh", label: "Équipes", icon: Users },
+  { to: "/rh", label: "Employés", icon: UserRound },
+  { to: "/rh/fiches", label: "Fiches RH", icon: Users },
   { to: "/rh/departements", label: "Départements", icon: Building2 },
   { to: "/rh/conges", label: "Congés", icon: CalendarDays },
   { to: "/rh/acomptes", label: "Acomptes", icon: Banknote },
@@ -64,7 +66,7 @@ export function AdminLayout({ children, variant = "admin" }: { children: ReactNo
   const links = variant === "hr" ? hrLinks : adminLinks;
   const home = variant === "hr" ? "/rh" : "/admin";
   const title = variant === "hr" ? "Console RH" : "Console admin";
-  const subtitle = variant === "hr" ? "Fiches, congés et dossiers" : "Pilotage de la masse salariale";
+  const subtitle = variant === "hr" ? "Comptes Entra et dossiers" : "Pilotage de la masse salariale";
 
   if (printMode) {
     return <div className="min-h-screen bg-white">{children}</div>;

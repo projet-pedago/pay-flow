@@ -18,3 +18,7 @@ export function isStaff(role: UserRole): boolean {
 export function staffBase(role: UserRole): "/admin" | "/rh" {
   return role === "hr" ? "/rh" : "/admin";
 }
+
+export function ficheBase(role: UserRole): "/admin/employes" | "/rh/fiches" {
+  return role === "hr" ? "/rh/fiches" : "/admin/employes";
+}
