@@ -15,7 +15,7 @@ import { createService } from "../../http.js";
 import { loginRateLimit, recordLoginFailure, recordLoginSuccess } from "../../lib/rate-limit.js";
 import { azureConfigured, verifyMicrosoftTokens } from "../../lib/azure.js";
 import { getSupabase } from "../../lib/supabase.js";
-import { loadStore } from "../../lib/store.js";
+import { loadStore, mutate } from "../../lib/store.js";
 
 const port = Number(process.env.PORT ?? 45231);
 
@@ -116,11 +116,31 @@ createService("payrollflow-auth", port, (app) => {
           return;
       }
 
+      const oid = profile.oid || profile.sub;
+      const employee =
+        role === "employee" && oid
+          ? mutate((store) => {
+              const byOid = store.employees.find((item) => item.entraObjectId === oid);
+              if (byOid) return byOid;
+
+              const byEmail = store.employees.find(
+                (item) => item.email.toLowerCase() === profile.email.toLowerCase(),
+              );
+              if (byEmail) {
+                byEmail.entraObjectId = oid;
+                return byEmail;
+              }
+
+              return undefined;
+            })
+          : undefined;
+
       const user = {
-        id: profile.oid || profile.sub,
+        id: oid,
         email: profile.email,
         name: profile.name,
         role,
+        employeeId: employee?.id,
       };
 
       recordLoginSuccess(req);

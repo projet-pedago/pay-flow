@@ -35,6 +35,7 @@ const employeeSchema = z.object({
   mealTicket5: z.number().min(0).optional(),
   mealTicket1650: z.number().min(0).optional(),
   contractEndDate: z.string().optional().or(z.literal("")),
+  entraObjectId: z.string().uuid().optional().or(z.literal("")),
 });
 
 function withLegalDefaults(
@@ -57,6 +58,7 @@ function withLegalDefaults(
     mealTicket5: data.mealTicket5 ?? 0,
     mealTicket1650: data.mealTicket1650 ?? 0,
     contractEndDate: data.contractEndDate || undefined,
+    entraObjectId: data.entraObjectId || undefined,
   };
 }
 

@@ -219,7 +219,7 @@ Dans Entra ID → App registrations → **PayFlow-Frontend** → Authentication 
 - `http://127.0.0.1:45217`
 - `http://localhost:45217`
 
-L’application API doit exposer le périmètre `access_as_user` et les rôles applicatifs `PAYFLOW_ADMIN`, `PAYFLOW_HR`, `PAYFLOW_EMPLOYEE`. Le bouton **Se connecter avec Microsoft** demande `openid`, `profile` et `api://{VITE_AZURE_API_CLIENT_ID}/access_as_user`. Un compte Entra authentifié **sans** rôle PayFlow reçoit HTTP 403. L’absence d’une fiche dans `store.users` n’empêche plus la connexion.
+L’application API doit exposer le périmètre `access_as_user` et les rôles applicatifs `PAYFLOW_ADMIN`, `PAYFLOW_HR`, `PAYFLOW_EMPLOYEE`. Le bouton **Se connecter avec Microsoft** demande `openid`, `profile` et `api://{VITE_AZURE_API_CLIENT_ID}/access_as_user`. Un compte Entra authentifié **sans** rôle PayFlow reçoit HTTP 403. L’absence d’une fiche dans `store.users` n’empêche plus la connexion. Un salarié est rattaché à sa fiche RH via `employees[].entraObjectId` (oid Entra) ; à la première connexion, un email identique à la fiche enregistre automatiquement l’oid.
 
 Si une erreur **AADSTS…** apparaît après le redémarrage, le code complet indique la prochaine correction (URI de redirection, consentement, audience).
 
