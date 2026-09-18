@@ -1,18 +1,23 @@
-import type { Employee } from "../types.js";
-import { directoryRoleOf, effectivePayflowRole, expectedPayflowRole } from "./directory-role.js";
-import type { PayflowEntraRole } from "./entra-graph.js";
-import { loadStore, mutate } from "./store.js";
+import type { Employee, Role, Store } from "../types.js";
+import { id, loadStore, mutate } from "./store.js";
 
 export const UNLINKED_EMPLOYEE_MESSAGE =
-  "Ce compte n'est pas lié à une fiche employé. Demandez à un administrateur d’associer votre compte Microsoft.";
+  "Votre fiche PayRollFlow se crée à la première connexion Microsoft. Reconnectez-vous si elle n’apparaît pas encore.";
 
-export type GraphIdentity = {
-  id: string;
-  displayName: string;
-  givenName?: string | null;
-  surname?: string | null;
-  userPrincipalName: string;
-  roles: PayflowEntraRole[];
+const DOCUMENT_PACK = [
+  { key: "cni" as const, label: "Pièce d'identité" },
+  { key: "rib" as const, label: "RIB / IBAN" },
+  { key: "contrat" as const, label: "Contrat de travail" },
+  { key: "vitale" as const, label: "Carte Vitale / CNAM" },
+];
+
+export type MicrosoftProfileInput = {
+  oid: string;
+  email: string;
+  name: string;
+  givenName?: string;
+  familyName?: string;
+  role: Role;
 };
 
 export function normalizeMicrosoftEmail(value: string): string {
@@ -29,13 +34,6 @@ export function foldName(value: string): string {
     .replace(/\s+/g, " ");
 }
 
-export function namesMatch(
-  fiche: { firstName: string; lastName: string },
-  entra: { firstName: string; lastName: string },
-): boolean {
-  return foldName(fiche.firstName) === foldName(entra.firstName) && foldName(fiche.lastName) === foldName(entra.lastName);
-}
-
 export function identityNamesFromGraph(user: {
   givenName?: string | null;
   surname?: string | null;
@@ -48,31 +46,7 @@ export function identityNamesFromGraph(user: {
   if (parts.length >= 2) {
     return { firstName: parts.slice(0, -1).join(" "), lastName: parts[parts.length - 1] ?? "" };
   }
-  return { firstName: parts[0] ?? "", lastName: "" };
-}
-
-export function associationDecision(
-  fiche: Pick<Employee, "firstName" | "lastName" | "directoryRole">,
-  graph: GraphIdentity,
-): { ok: true } | { ok: false; error: string } {
-  const entraNames = identityNamesFromGraph(graph);
-  const sameParts = namesMatch(fiche, entraNames);
-  const sameDisplay = foldName(`${fiche.firstName} ${fiche.lastName}`) === foldName(graph.displayName);
-  if (!sameParts && !sameDisplay) {
-    return {
-      ok: false,
-      error: "Le prénom et le nom de la fiche PayRollFlow ne correspondent pas au compte Microsoft sélectionné.",
-    };
-  }
-  const expected = expectedPayflowRole(directoryRoleOf(fiche));
-  const effective = effectivePayflowRole(graph.roles);
-  if (effective !== expected) {
-    return {
-      ok: false,
-      error: "Le rôle PayFlow du compte Microsoft ne correspond pas au type de cette identité.",
-    };
-  }
-  return { ok: true };
+  return { firstName: parts[0] ?? user.displayName.trim(), lastName: "" };
 }
 
 export function findEmployeeForMicrosoft(
@@ -95,88 +69,125 @@ export function findEmployeeForMicrosoft(
   return undefined;
 }
 
-export function microsoftUpnTaken(employees: Employee[], upn: string, exceptId?: string): Employee | undefined {
-  const email = normalizeMicrosoftEmail(upn);
-  if (!email) return undefined;
-  return employees.find(
-    (item) => item.id !== exceptId && item.entraUserPrincipalName?.toLowerCase() === email,
-  );
+function ensureDocumentPack(store: Store, employeeId: string): void {
+  for (const doc of DOCUMENT_PACK) {
+    if (store.documents.some((item) => item.employeeId === employeeId && item.key === doc.key)) continue;
+    store.documents.push({
+      id: `${employeeId}-${doc.key}`,
+      employeeId,
+      key: doc.key,
+      label: doc.label,
+      status: "missing",
+      updatedAt: new Date().toISOString(),
+    });
+  }
 }
 
-export function microsoftOidTaken(employees: Employee[], oid: string, exceptId?: string): Employee | undefined {
-  const id = oid.trim();
-  if (!id) return undefined;
-  return employees.find((item) => item.id !== exceptId && item.entraObjectId === id);
+export function upsertMicrosoftEmployee(store: Store, input: MicrosoftProfileInput): Employee {
+  const oid = input.oid.trim();
+  const email = normalizeMicrosoftEmail(input.email);
+  const names = identityNamesFromGraph({
+    givenName: input.givenName,
+    surname: input.familyName,
+    displayName: input.name || email,
+  });
+  const firstName = names.firstName || email.split("@")[0] || "Collaborateur";
+  const lastName = names.lastName;
+  const current = findEmployeeForMicrosoft(store.employees, { id: oid, email });
+
+  if (current) {
+    const alreadyProvisioned =
+      current.entraObjectId === oid &&
+      current.entraUserPrincipalName === email &&
+      current.email === email &&
+      current.firstName === firstName &&
+      current.lastName === lastName &&
+      current.directoryRole === input.role;
+    if (!alreadyProvisioned) {
+      current.entraObjectId = oid || current.entraObjectId;
+      current.entraUserPrincipalName = email || current.entraUserPrincipalName;
+      current.email = email || current.email;
+      current.firstName = firstName;
+      current.lastName = lastName;
+      current.directoryRole = input.role;
+    }
+    ensureDocumentPack(store, current.id);
+    return current;
+  }
+
+  const departmentId = store.departments[0]?.id ?? "dep-001";
+  const created: Employee = {
+    id: id(),
+    firstName,
+    lastName,
+    email,
+    phone: "n/c",
+    departmentId,
+    jobTitle: input.role === "admin" ? "Administrateur" : input.role === "hr" ? "Responsable RH" : "À renseigner",
+    contractType: "CDI",
+    hireDate: new Date().toISOString().slice(0, 10),
+    baseSalary: 0,
+    status: "active",
+    iban: "",
+    city: store.settings.companyCity || "",
+    country: "France",
+    civility: "M",
+    matricule: String(1000 + store.employees.length + 1),
+    address: "",
+    postalCode: "",
+    socialSecurityNumber: "",
+    category: "Non Cadre",
+    coefficient: "220",
+    classificationIndex: "1.3.1",
+    qualification: "",
+    contractHours: store.settings.monthlyHours || 151.67,
+    pasRate: 0,
+    mealTicket5: 0,
+    mealTicket1650: 0,
+    entraObjectId: oid,
+    entraUserPrincipalName: email,
+    directoryRole: input.role,
+  };
+  store.employees.push(created);
+  ensureDocumentPack(store, created.id);
+  return created;
 }
 
-export function linkMicrosoftEmployee(identity: { id: string; email: string }): Employee | undefined {
-  const oid = identity.id.trim();
-  const email = normalizeMicrosoftEmail(identity.email);
+function identityFromInput(input: MicrosoftProfileInput): { firstName: string; lastName: string; email: string; oid: string } {
+  const oid = input.oid.trim();
+  const email = normalizeMicrosoftEmail(input.email);
+  const names = identityNamesFromGraph({
+    givenName: input.givenName,
+    surname: input.familyName,
+    displayName: input.name || email,
+  });
+  return {
+    oid,
+    email,
+    firstName: names.firstName || email.split("@")[0] || "Collaborateur",
+    lastName: names.lastName,
+  };
+}
+
+export function provisionMicrosoftProfile(input: MicrosoftProfileInput): Employee | undefined {
+  const { oid, email } = identityFromInput(input);
   if (!oid && !email) return undefined;
-
-  const current = findEmployeeForMicrosoft(loadStore().employees, identity);
-  if (!current) return undefined;
-
-  const needsOid = Boolean(oid && current.entraObjectId !== oid);
-  const needsUpn = Boolean(email && current.entraUserPrincipalName?.toLowerCase() !== email);
-  if (!needsOid && !needsUpn) return current;
-
-  return mutate((store) => {
-    const item = store.employees.find((entry) => entry.id === current.id);
-    if (!item) return undefined;
-    if (oid && item.entraObjectId !== oid) {
-      for (const other of store.employees) {
-        if (other.id !== item.id && other.entraObjectId === oid) other.entraObjectId = undefined;
-      }
-      item.entraObjectId = oid;
-    }
-    if (email && item.entraUserPrincipalName?.toLowerCase() !== email) item.entraUserPrincipalName = email;
-    return item;
-  });
-}
-
-export function associateMicrosoftAccount(
-  employeeId: string,
-  graphUser: GraphIdentity | null,
-): { employee: Employee } | { error: string; status: number } {
-  return mutate((store) => {
-    const item = store.employees.find((entry) => entry.id === employeeId);
-    if (!item) return { error: "Identité introuvable", status: 404 };
-
-    if (!graphUser) {
-      item.entraObjectId = undefined;
-      item.entraUserPrincipalName = undefined;
-      return { employee: item };
-    }
-
-    const decision = associationDecision(item, graphUser);
-    if (!decision.ok) return { error: decision.error, status: 409 };
-
-    const takenOid = microsoftOidTaken(store.employees, graphUser.id, employeeId);
-    if (takenOid) {
-      return {
-        error: `Ce compte Microsoft est déjà associé à ${takenOid.firstName} ${takenOid.lastName}.`,
-        status: 409,
-      };
-    }
-    const takenUpn = microsoftUpnTaken(store.employees, graphUser.userPrincipalName, employeeId);
-    if (takenUpn) {
-      return {
-        error: `Ce compte Microsoft est déjà associé à ${takenUpn.firstName} ${takenUpn.lastName}.`,
-        status: 409,
-      };
-    }
-
-    for (const other of store.employees) {
-      if (other.id === item.id) continue;
-      if (other.entraObjectId === graphUser.id) other.entraObjectId = undefined;
-      if (other.entraUserPrincipalName?.toLowerCase() === graphUser.userPrincipalName.toLowerCase()) {
-        other.entraUserPrincipalName = undefined;
-      }
-    }
-
-    item.entraObjectId = graphUser.id;
-    item.entraUserPrincipalName = normalizeMicrosoftEmail(graphUser.userPrincipalName);
-    return { employee: item };
-  });
+  const snapshot = loadStore();
+  const current = findEmployeeForMicrosoft(snapshot.employees, { id: oid, email });
+  if (current) {
+    const names = identityFromInput(input);
+    const packComplete = DOCUMENT_PACK.every((doc) =>
+      snapshot.documents.some((item) => item.employeeId === current.id && item.key === doc.key),
+    );
+    const alreadyProvisioned =
+      current.entraObjectId === oid &&
+      current.entraUserPrincipalName === email &&
+      current.email === email &&
+      current.firstName === names.firstName &&
+      current.lastName === names.lastName &&
+      current.directoryRole === input.role &&
+      packComplete;
+    if (alreadyProvisioned) return current;
+  }
+  return mutate((store) => upsertMicrosoftEmployee(store, input));
 }

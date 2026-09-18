@@ -42,8 +42,8 @@ export function EmptyState({ title, hint }: { title: string; hint: string }) {
 export function UnlinkedEmployeeState() {
   return (
     <EmptyState
-      title="Compte Microsoft non associé"
-      hint="Le service RH doit rattacher votre UPN Entra (ex. emp-01@…onmicrosoft.com) à une fiche salarié. Ensuite, actualisez cette page — sans vous reconnecter."
+      title="Fiche en cours de création"
+      hint="PayRollFlow crée votre fiche à la première connexion Microsoft. Actualisez la page si elle n’apparaît pas encore."
     />
   );
 }

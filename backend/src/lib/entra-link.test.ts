@@ -1,118 +1,45 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { Employee } from "../types.js";
-import {
-  associationDecision,
-  findEmployeeForMicrosoft,
-  foldName,
-  identityNamesFromGraph,
-  microsoftUpnTaken,
-  namesMatch,
-} from "./entra-link.js";
+import type { Employee, Store } from "../types.js";
+import { isPayrollEmployee } from "./directory-role.js";
+import { findEmployeeForMicrosoft, identityNamesFromGraph, upsertMicrosoftEmployee } from "./entra-link.js";
 
-function employee(partial: Partial<Employee> & Pick<Employee, "id" | "email">): Employee {
+function emptyStore(): Store {
   return {
-    firstName: "Test",
-    lastName: "User",
-    phone: "n/c",
-    departmentId: "dep-001",
-    jobTitle: "Salarié",
-    contractType: "CDI",
-    hireDate: "2024-01-01",
-    baseSalary: 3000,
-    status: "active",
-    iban: "FR76",
-    city: "Paris",
-    country: "France",
-    civility: "M",
-    matricule: "1001",
-    address: "",
-    postalCode: "",
-    socialSecurityNumber: "",
-    category: "Non Cadre",
-    coefficient: "220",
-    classificationIndex: "1.3.1",
-    qualification: "",
-    contractHours: 151.67,
-    pasRate: 0,
-    mealTicket5: 0,
-    mealTicket1650: 0,
-    ...partial,
+    schemaVersion: 8,
+    settings: {
+      companyName: "PayRollFlow",
+      companyAddress: "",
+      companyPostalCode: "",
+      companyCity: "Paris",
+      siret: "",
+      ape: "",
+      conventionCollective: "Syntec",
+      paymentMethod: "Virement",
+      currency: "EUR",
+      workingDays: 22,
+      monthlyHours: 151.67,
+      overtimeRate: 1.25,
+      smicHourly: 11.88,
+      fillonT: 0.3195,
+      advanceCapRatio: 0.3,
+    },
+    departments: [{ id: "dep-001", name: "Ingénierie", code: "ING", budget: 1, color: "#000" }],
+    employees: [],
+    rates: [],
+    periods: [],
+    payslips: [],
+    users: [],
+    leaves: [],
+    advances: [],
+    documents: [],
+    clients: [],
+    partners: [],
+    invoices: [],
+    notifications: [],
+    auditLog: [],
   };
 }
-
-const aminata = employee({
-  id: "emp-001",
-  firstName: "Aminata",
-  lastName: "Diallo",
-  email: "aminata.diallo@payrollflow.demo",
-});
-
-const linked = employee({
-  id: "emp-002",
-  email: "jp.kouame@payrollflow.demo",
-  entraObjectId: "84d7aaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-  entraUserPrincipalName: "emp-01@tenant.onmicrosoft.com",
-});
-
-const pending = employee({
-  id: "emp-003",
-  email: "fatou.ndiaye@payrollflow.demo",
-  entraUserPrincipalName: "emp-02@tenant.onmicrosoft.com",
-});
-
-const roster = [aminata, linked, pending];
-
-test("oid Entra gagne sur l’UPN et l’email RH", () => {
-  const found = findEmployeeForMicrosoft(roster, {
-    id: linked.entraObjectId!,
-    email: "emp-02@tenant.onmicrosoft.com",
-  });
-  assert.equal(found?.id, "emp-002");
-});
-
-test("UPN Entra rattache un compte dont l’email RH ne correspond pas", () => {
-  const found = findEmployeeForMicrosoft(roster, {
-    id: "11111111-2222-3333-4444-555555555555",
-    email: "EMP-02@tenant.onmicrosoft.com",
-  });
-  assert.equal(found?.id, "emp-003");
-});
-
-test("aucun match si l’UPN Entra n’est pas sur une fiche", () => {
-  const found = findEmployeeForMicrosoft(roster, {
-    id: "00000000-0000-0000-0000-000000000000",
-    email: "emp-01@lassissisaliouyaoibraoutloo.onmicrosoft.com",
-  });
-  assert.equal(found, undefined);
-});
-
-test("l’email RH n’associe plus automatiquement un compte Microsoft", () => {
-  const found = findEmployeeForMicrosoft(roster, {
-    id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-    email: "aminata.diallo@payrollflow.demo",
-  });
-  assert.equal(found, undefined);
-});
-
-test("un UPN ne peut pas être associé à deux fiches", () => {
-  const taken = microsoftUpnTaken(roster, "emp-01@tenant.onmicrosoft.com", "emp-001");
-  assert.equal(taken?.id, "emp-002");
-  assert.equal(microsoftUpnTaken(roster, "emp-01@tenant.onmicrosoft.com", "emp-002"), undefined);
-});
-
-test("la comparaison de noms ignore casse, accents et espaces", () => {
-  assert.equal(foldName("  Alexis  YAO "), "alexis yao");
-  assert.equal(foldName("Céline"), "celine");
-  assert.equal(
-    namesMatch({ firstName: "Alexis", lastName: "Yao" }, { firstName: "ALEXIS", lastName: "YAO" }),
-    true,
-  );
-  assert.equal(
-    namesMatch({ firstName: "Alexis", lastName: "Yao" }, { firstName: "Jean", lastName: "Dupont" }),
-    false,
-  );
-});
 
 test("Graph givenName/surname ou displayName fournissent l’identité", () => {
   assert.deepEqual(
@@ -125,52 +52,113 @@ test("Graph givenName/surname ou displayName fournissent l’identité", () => {
   });
 });
 
-test("l’association exige le même nom et le même rôle", () => {
-  const fiche = employee({
-    id: "emp-alexis",
-    firstName: "Alexis",
-    lastName: "Yao",
-    email: "alexis@payrollflow.demo",
-    directoryRole: "employee",
-  });
-  const ok = associationDecision(fiche, {
-    id: "oid-alexis",
-    displayName: "Alexis Yao",
+test("la première connexion crée la fiche interne à partir de l’oid Microsoft", () => {
+  const store = emptyStore();
+  const created = upsertMicrosoftEmployee(store, {
+    oid: "abc-123",
+    email: "alexis.yao@tenant.onmicrosoft.com",
+    name: "Alexis Yao",
     givenName: "Alexis",
-    surname: "Yao",
-    userPrincipalName: "alexis.yao@tenant.onmicrosoft.com",
-    roles: ["PAYFLOW_EMPLOYEE"],
+    familyName: "Yao",
+    role: "employee",
   });
-  assert.equal(ok.ok, true);
+  assert.equal(store.employees.length, 1);
+  assert.equal(created.entraObjectId, "abc-123");
+  assert.equal(created.firstName, "Alexis");
+  assert.equal(created.lastName, "Yao");
+  assert.equal(created.email, "alexis.yao@tenant.onmicrosoft.com");
+  assert.equal(created.directoryRole, "employee");
+  assert.equal(store.documents.length, 4);
+});
 
-  const wrongName = associationDecision(fiche, {
-    id: "oid-jean",
-    displayName: "Jean Dupont",
-    givenName: "Jean",
-    surname: "Dupont",
-    userPrincipalName: "jean@tenant.onmicrosoft.com",
-    roles: ["PAYFLOW_EMPLOYEE"],
+test("une connexion suivante recharge la même fiche sans en créer une seconde", () => {
+  const store = emptyStore();
+  const first = upsertMicrosoftEmployee(store, {
+    oid: "abc-123",
+    email: "alexis.yao@tenant.onmicrosoft.com",
+    name: "Alexis Yao",
+    givenName: "Alexis",
+    familyName: "Yao",
+    role: "employee",
   });
-  assert.equal(wrongName.ok, false);
+  first.baseSalary = 3500;
+  first.jobTitle = "Ingénieur DevOps";
+  const second = upsertMicrosoftEmployee(store, {
+    oid: "abc-123",
+    email: "alexis.yao@tenant.onmicrosoft.com",
+    name: "Alexis Yao",
+    givenName: "Alexis",
+    familyName: "Yao",
+    role: "employee",
+  });
+  assert.equal(store.employees.length, 1);
+  assert.equal(second.id, first.id);
+  assert.equal(second.baseSalary, 3500);
+  assert.equal(second.jobTitle, "Ingénieur DevOps");
+});
 
-  const sameDisplay = associationDecision(
-    { firstName: "Alexis", lastName: "Yao", directoryRole: "employee" },
+test("un admin ou un RH reçoit une fiche interne, pas une fiche de paie", () => {
+  const store = emptyStore();
+  const admin = upsertMicrosoftEmployee(store, {
+    oid: "oid-admin",
+    email: "ibrahim@tenant.onmicrosoft.com",
+    name: "ibrahim yao",
+    role: "admin",
+  });
+  assert.equal(admin.directoryRole, "admin");
+  assert.equal(admin.jobTitle, "Administrateur");
+  assert.equal(isPayrollEmployee(admin), false);
+  const hr = upsertMicrosoftEmployee(store, {
+    oid: "oid-hr",
+    email: "sogodogo@tenant.onmicrosoft.com",
+    name: "Sogo Dogo",
+    role: "hr",
+  });
+  assert.equal(hr.directoryRole, "hr");
+  assert.equal(isPayrollEmployee(hr), false);
+});
+
+test("findEmployeeForMicrosoft suit l’oid puis l’UPN, jamais un email RH démo", () => {
+  const roster: Employee[] = [
     {
-      id: "oid",
-      displayName: "Alexis Yao",
-      userPrincipalName: "alexis@tenant.onmicrosoft.com",
-      roles: ["PAYFLOW_EMPLOYEE"],
+      id: "emp-001",
+      firstName: "Aminata",
+      lastName: "Diallo",
+      email: "aminata.diallo@payrollflow.demo",
+      phone: "n/c",
+      departmentId: "dep-001",
+      jobTitle: "Salarié",
+      contractType: "CDI",
+      hireDate: "2024-01-01",
+      baseSalary: 0,
+      status: "active",
+      iban: "",
+      city: "Paris",
+      country: "France",
+      civility: "M",
+      matricule: "1001",
+      address: "",
+      postalCode: "",
+      socialSecurityNumber: "",
+      category: "Non Cadre",
+      coefficient: "220",
+      classificationIndex: "1.3.1",
+      qualification: "",
+      contractHours: 151.67,
+      pasRate: 0,
+      mealTicket5: 0,
+      mealTicket1650: 0,
+      entraObjectId: "oid-1",
+      entraUserPrincipalName: "emp-01@tenant.onmicrosoft.com",
     },
+  ];
+  assert.equal(findEmployeeForMicrosoft(roster, { id: "oid-1", email: "other@x.com" })?.id, "emp-001");
+  assert.equal(
+    findEmployeeForMicrosoft(roster, { id: "missing", email: "emp-01@tenant.onmicrosoft.com" })?.id,
+    "emp-001",
   );
-  assert.equal(sameDisplay.ok, true);
-
-  const wrongRole = associationDecision(fiche, {
-    id: "oid-alexis-admin",
-    displayName: "Alexis Yao",
-    givenName: "Alexis",
-    surname: "Yao",
-    userPrincipalName: "alexis.yao@tenant.onmicrosoft.com",
-    roles: ["PAYFLOW_ADMIN"],
-  });
-  assert.equal(wrongRole.ok, false);
+  assert.equal(
+    findEmployeeForMicrosoft(roster, { id: "missing", email: "aminata.diallo@payrollflow.demo" }),
+    undefined,
+  );
 });

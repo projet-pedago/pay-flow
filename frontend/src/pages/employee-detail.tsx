@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { MicrosoftAssociateDialog } from "@/components/microsoft-associate-dialog";
 import { ErrorState, LoadingState } from "@/components/states";
 import { EmployeeBadge, PeriodBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -27,7 +26,6 @@ export function EmployeeDetailPage() {
   const periods = useApi<PayrollPeriod[]>(isAdmin ? "/api/payroll/periods" : null);
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState<Employee | null>(null);
-  const [associateOpen, setAssociateOpen] = useState(false);
 
   if (employeeQuery.loading) return <LoadingState />;
   if (employeeQuery.error || !employeeQuery.data) {
@@ -44,10 +42,35 @@ export function EmployeeDetailPage() {
     try {
       const updated = await api<Employee>(`/api/employees/${id}`, {
         method: "PUT",
-        body: JSON.stringify(employee),
+        body: JSON.stringify({
+          phone: employee.phone,
+          departmentId: employee.departmentId,
+          jobTitle: employee.jobTitle,
+          contractType: employee.contractType,
+          hireDate: employee.hireDate,
+          baseSalary: employee.baseSalary,
+          status: employee.status,
+          iban: employee.iban,
+          city: employee.city,
+          country: employee.country,
+          civility: employee.civility,
+          matricule: employee.matricule,
+          address: employee.address,
+          postalCode: employee.postalCode,
+          socialSecurityNumber: employee.socialSecurityNumber,
+          category: employee.category,
+          coefficient: employee.coefficient,
+          classificationIndex: employee.classificationIndex,
+          qualification: employee.qualification,
+          contractHours: employee.contractHours,
+          pasRate: employee.pasRate,
+          mealTicket5: employee.mealTicket5,
+          mealTicket1650: employee.mealTicket1650,
+          contractEndDate: employee.contractEndDate ?? "",
+        }),
       });
       setDraft(updated);
-      toast.success("Profil mis à jour");
+      toast.success("Contrat et paie mis à jour");
       await employeeQuery.reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Mise à jour impossible");
@@ -55,10 +78,6 @@ export function EmployeeDetailPage() {
       setSaving(false);
     }
   }
-
-  const microsoftStatus = employee.entraObjectId
-    ? `associé · ${employee.entraUserPrincipalName ?? employee.entraObjectId}`
-    : "non associé";
 
   return (
     <div className="space-y-6">
@@ -76,35 +95,23 @@ export function EmployeeDetailPage() {
           </div>
         </div>
         <Button onClick={() => void save()} disabled={saving}>
-          {saving ? "Sauvegarde…" : "Enregistrer le profil"}
+          {saving ? "Sauvegarde…" : "Enregistrer"}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <div>
-            <h3 className="font-display text-xl">Compte Microsoft</h3>
-            <p className="mt-1 text-sm text-ink/55">
-              {isAdmin
-                ? `Identité Entra : ${microsoftStatus}. L’association n’est possible que si le prénom, le nom et le rôle correspondent.`
-                : `Identité Entra : ${microsoftStatus}. Seul un administrateur peut associer ou modifier le compte Microsoft.`}
-            </p>
-          </div>
+          <h3 className="font-display text-xl">Identité Microsoft</h3>
+          <p className="mt-1 text-sm text-ink/55">
+            Compte Entra {employee.entraUserPrincipalName || employee.email}. Le nom et l’email viennent de Microsoft ;
+            ils se mettent à jour à chaque connexion.
+          </p>
         </CardHeader>
-        <CardContent>
-          {isAdmin ? (
-            <Button onClick={() => setAssociateOpen(true)}>
-              {employee.entraObjectId ? "Gérer le compte Microsoft" : "Associer un compte Microsoft"}
-            </Button>
-          ) : (
-            <p className="text-sm text-ink/55">{employee.entraUserPrincipalName || "Aucun compte Microsoft associé."}</p>
-          )}
-        </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <h3 className="font-display text-xl">Fiche RH</h3>
+          <h3 className="font-display text-xl">Contrat et paie</h3>
         </CardHeader>
         <CardContent>
           <EmployeeForm
@@ -113,7 +120,6 @@ export function EmployeeDetailPage() {
             onChange={(value) => setDraft({ ...employee, ...value })}
             onSubmit={() => void save()}
             saving={saving}
-            showMicrosoftField={false}
           />
           <div className="mt-4 flex flex-wrap gap-3 text-sm">
             <Link to={`${base}/attestations/${employee.id}/travail`} className="text-sage underline">
@@ -153,16 +159,6 @@ export function EmployeeDetailPage() {
           </CardContent>
         </Card>
       ) : null}
-
-      <MicrosoftAssociateDialog
-        employee={employee}
-        open={associateOpen}
-        onOpenChange={setAssociateOpen}
-        onLinked={(updated) => {
-          setDraft(updated);
-          void employeeQuery.reload();
-        }}
-      />
     </div>
   );
 }

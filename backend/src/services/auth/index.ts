@@ -11,7 +11,7 @@ import {
 import { createService } from "../../http.js";
 import { loginRateLimit, recordLoginFailure, recordLoginSuccess } from "../../lib/rate-limit.js";
 import { azureConfigured, verifyMicrosoftTokens } from "../../lib/azure.js";
-import { linkMicrosoftEmployee } from "../../lib/entra-link.js";
+import { provisionMicrosoftProfile } from "../../lib/entra-link.js";
 
 const port = Number(process.env.PORT ?? 45231);
 
@@ -68,14 +68,21 @@ createService("payrollflow-auth", port, (app) => {
       }
 
       const oid = profile.oid || profile.sub;
-      const employee = role === "employee" ? linkMicrosoftEmployee({ id: oid, email: profile.email }) : undefined;
+      const fiche = provisionMicrosoftProfile({
+        oid,
+        email: profile.email,
+        name: profile.name,
+        givenName: profile.givenName,
+        familyName: profile.familyName,
+        role,
+      });
 
       const user = {
         id: oid,
         email: profile.email,
         name: profile.name,
         role,
-        employeeId: employee?.id,
+        employeeId: fiche?.id,
       };
 
       recordLoginSuccess(req);

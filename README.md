@@ -33,7 +33,7 @@ Renseignez `frontend/.env.local` et `backend/.env` (voir [Microsoft Entra ID](#m
 | --- | --- | --- |
 | Interface | `frontend/` | React 19 + Vite + TypeScript + Tailwind + shadcn/ui + Framer Motion |
 | API | `backend/` | Express 5, 4 microservices + passerelle |
-| Données démo | `backend/data/store.json` | Créé automatiquement au premier lancement |
+| Données métier | `backend/data/store.json` | Fiches, bulletins, congés rattachés à l’oid Microsoft. Créé au premier lancement (départements + barème, sans employés de démo) |
 | Docker | `docker-compose.yml` | 6 images (auth, hr, payroll, time, gateway, frontend) |
 
 ### Console administrateur (`/admin`)
@@ -42,7 +42,8 @@ Renseignez `frontend/.env.local` et `backend/.env` (voir [Microsoft Entra ID](#m
 - **Assistant RH** : questions sur le solde de congés, le bulletin, une simulation d’augmentation (données réelles, sans hallucination)
 - **Calcul du bulletin** : simulation pas à pas + **hausse de salaire / prime** et écart de charges
 - **Réseau & factures** : salariés internes, clients internes, entreprises facturées, freelances, intérim, portage
-- Employés (fiche RH, **date de fin de contrat**, alertes d’échéance, import/export CSV)
+- **Utilisateurs** : comptes Entra `PAYFLOW_*` (Graph, lecture seule)
+- Fiches RH (contrat, salaire, **date de fin de contrat**, alertes d’échéance, export CSV) — créées à la première connexion Microsoft
 - Départements
 - Cycles de paie (brouillon → calcul → validation → paiement, **versions de bulletins** conservées)
 - Bulletins A4 (impression / PDF, **QR de vérification**)
@@ -53,7 +54,7 @@ Renseignez `frontend/.env.local` et `backend/.env` (voir [Microsoft Entra ID](#m
 - Journal d’audit (calcul, validation, décisions d’absence)
 - Paramètres société (SIRET, APE, convention, barème URSSAF)
 - Export fichier de virement (CSV)
-- Réinitialiser la démo
+- Vider les données métier (fiches, bulletins, demandes — pas les comptes Entra)
 
 ### Espace collaborateur (`/espace`)
 
@@ -65,7 +66,14 @@ Renseignez `frontend/.env.local` et `backend/.env` (voir [Microsoft Entra ID](#m
 - Dossier RH (CNI, RIB, contrat, Vitale)
 - **Attestations** (travail, certificat de salaire)
 - Assistant RH
-- Profil (téléphone, ville, IBAN)
+- Profil (téléphone, adresse, ville, IBAN — le salaire, le contrat et le matricule sont en lecture seule)
+
+### Console RH (`/rh`)
+
+- Comptes Entra `PAYFLOW_EMPLOYEE` uniquement (pas d’Admin)
+- Fiches RH (contrat, salaire, congés, acomptes, documents)
+- Assistant RH
+- Aucune création manuelle de collaborateur : la fiche apparaît à la première connexion Microsoft
 
 ### Stack visuelle (sans Next.js)
 
@@ -230,13 +238,47 @@ Les comptes de connexion se créent **uniquement dans Microsoft Entra ID**. `GET
 
 Permission Graph minimale : `User.Read.All` (liste des utilisateurs et de leurs `appRoleAssignments`). `Application.Read.All` (ou `Directory.Read.All`) est optionnelle : sans elle, PayFlow associe les GUID de rôles connus (`AZURE_PAYFLOW_ROLE_*_ID` ou valeurs intégrées). Aucune écriture Entra. Seule l’application entreprise **PayFlow** compte ; **PayFlow-Frontend** et **PayFlow-Provisioning** sont ignorées.
 
-`POST /api/employees` (Admin uniquement) crée une identité PayRollFlow, pas un compte Microsoft. `PUT /api/employees/:id/microsoft-link` (Admin uniquement) associe l’oid Entra si le prénom/nom et le rôle correspondent (`PAYFLOW_EMPLOYEE` ↔ Employé, `PAYFLOW_HR` ↔ RH, `PAYFLOW_ADMIN` ↔ Admin). Les rôles Entra ouvrent respectivement `/espace`, `/rh` et `/admin`.
+### Identité unique Microsoft
 
-Un salarié n’est pas identifié par son email RH. La chaîne est :
+Il n’y a **pas** de second compte à créer dans PayRollFlow, **pas** d’association manuelle. Entra ID fournit l’identité (`oid`, prénom, nom, email) et le rôle. PayRollFlow attache automatiquement les données RH à cet `oid`.
 
-`compte Microsoft (oid)` → `employees[].entraObjectId` / `entraUserPrincipalName` → `employeeId` → salaire, bulletins, contrat, congés, demandes, documents.
+```
+MICROSOFT ENTRA ID
+        │
+Compte + identité + rôle
+        │
+  Connexion Microsoft
+        │
+  Token Entra vérifié
+        │
+┌───────┼────────┐
+│       │        │
+ADMIN   RH    EMPLOYEE
+│       │        │
+/admin  /rh   /espace
+        │
+  oid Microsoft
+        ▼
+  DONNÉES PAYFLOW
+```
 
-Si l’UPN Entra (`emp-01@…onmicrosoft.com`) diffère de l’email de la fiche (`aminata.diallo@payrollflow.demo`), **seul l’administrateur** associe le compte depuis **Utilisateurs** (créer l’identité prénom/nom/type, puis Associer). Le backend refuse l’association si le prénom/nom Entra ou le rôle PayFlow ne correspondent pas. Le RH voit les fiches et les demandes, sans bouton d’association. À la connexion suivante, l’oid ouvre `/espace`, `/rh` ou `/admin` selon le rôle. Tant que la fiche employé n’est pas liée, l’espace collaborateur s’affiche vide au lieu de renvoyer HTTP 400.
+À la **première connexion**, PayRollFlow crée la fiche interne :
+
+`oid` + nom + email + rôle → `employees[]` (`entraObjectId`, `firstName`, `lastName`, `email`, `directoryRole`). Les connexions suivantes rechargent la même fiche. `POST /api/employees` et l’import CSV répondent **410** : on ne crée plus de nom à la main.
+
+Les rôles Entra ouvrent respectivement `/admin`, `/rh` et `/espace`.
+
+| Rôle | Voit | Ne voit pas |
+| --- | --- | --- |
+| EMPLOYEE | Son profil, contrat, salaire, bulletins, congés, demandes, acomptes, documents | Autres employés, comptes RH / Admin, autres salaires |
+| RH | Comptes `PAYFLOW_EMPLOYEE` (Graph) + fiches / contrats / congés / acomptes / documents | Comptes Admin, liste complète Entra |
+| ADMIN | Tous les `PAYFLOW_*` (Graph) + paie, bulletins, paramètres | — |
+
+L’employé peut modifier téléphone, adresse, code postal, ville, pays, IBAN. Salaire, rôle, matricule, type de contrat, poste, département, date d’embauche et bulletins restent gérés par RH / Admin.
+
+Chaîne métier :
+
+`compte Microsoft (oid)` → `employees[].entraObjectId` → salaire, bulletins, contrat, congés, demandes, documents.
 
 Si une erreur **AADSTS…** apparaît après le redémarrage, le code complet indique la prochaine correction (URI de redirection, consentement, audience).
 
@@ -289,13 +331,15 @@ Puis ouvrez :
 
 Le frontend Vite proxifie `/api` vers la passerelle `45218`.
 
-Au premier démarrage, `backend/data/store.json` est créé (société ANTARES DS, employés, cycles **juillet / août 2026** calculés, **septembre** en brouillon).
+Au premier démarrage, `backend/data/store.json` est créé (société ANTARES DS, départements, barème URSSAF). Aucun employé, bulletin ni compte de démo. Les fiches apparaissent à la première connexion Microsoft.
 
-### Réinitialiser la démo
+La migration **schemaVersion 8** vide les anciens jeux de démo (`users`, `employees`, `payslips`, `leaves`, `advances`, `documents`, `notifications`) tout en conservant départements et paramètres. Les fiches Microsoft déjà provisionnées (schema ≥ 8) ne sont pas effacées.
 
-**Admin → Paramètres → Réinitialiser la démo**
+### Vider les données métier
 
-Cela régénère `store.json` (pas les utilisateurs Supabase).
+**Admin → Paramètres → Vider les données métier**
+
+Cela régénère `store.json` (départements + barème, fiches vides). Les comptes Microsoft Entra ne sont pas touchés : leur fiche interne se recrée à la prochaine connexion.
 
 ---
 
@@ -328,17 +372,11 @@ Arrêt : `docker compose down`. Les données JSON vivent dans le volume Docker `
 
 Pas d’inscription, pas de login email/mot de passe. Les comptes visibles dans PayRollFlow sont ceux d’Entra ID auxquels un rôle PayFlow a été attribué.
 
-Les fiches `employees[]` (paie, bulletins, congés) restent des objets métier distincts. On ne les efface pas automatiquement : une fiche n’est pas un compte utilisateur.
+Les fiches `employees[]` (paie, bulletins, congés) sont des objets métier rattachés à l’oid Entra. Elles se créent à la première connexion, elles ne sont plus des comptes de démo.
 
-### Bulletin à l’identique du PDF
+### Bulletin officiel
 
-1. Associez un compte Entra `PAYFLOW_EMPLOYEE` à la fiche Yao Lassidan, ou ouvrez la fiche côté admin.
-2. **Mes bulletins → août 2026** (espace collaborateur) ou **Cycles de paie → août 2026** (admin).
-3. **Imprimer / PDF**
-
-Société affichée : ANTARES DS, matricule **1212**, période **01/08/26 – 31/08/26**, net **704,88**.
-
-Côté admin : **Cycles de paie → août 2026 → bulletin de Yao Lassidan**.
+Après connexion d’un `PAYFLOW_EMPLOYEE`, le RH / Admin complète contrat et salaire, calcule un cycle, puis le collaborateur ouvre **Mes bulletins**. Le moteur reprend la structure d’un bulletin français A4 (voir plus bas).
 
 ---
 
@@ -360,8 +398,9 @@ Toutes les routes (sauf health) exigent le cookie httpOnly `payrollflow_token`. 
 | POST | `/api/auth/microsoft` | Jeton d’accès Entra (`access_as_user`) → session cookie |
 | GET | `/api/auth/me` | Session courante |
 | GET | `/api/entra/users` | Comptes Entra ayant un rôle PayFlow (admin : tous, RH : employés, salarié : 403) |
-| GET/POST/PUT | `/api/employees` | Fiches RH (admin) |
-| POST | `/api/employees/import` | Import CSV |
+| GET/PUT | `/api/employees` | Fiches RH (GET : RH = salariés, Admin = salariés ou `?scope=directory`) |
+| PUT | `/api/me/profile` | Coordonnées personnelles du salarié connecté |
+| POST | `/api/employees` | 410 — fiche créée à la première connexion Microsoft |
 | GET/POST | `/api/payroll/periods` | Cycles |
 | POST | `/api/payroll/periods/:id/calculate` | Calcul des bulletins |
 | POST | `/api/payroll/periods/:id/validate` | Validation |
@@ -369,7 +408,7 @@ Toutes les routes (sauf health) exigent le cookie httpOnly `payrollflow_token`. 
 | GET | `/api/payroll/periods/:id/export` | CSV virements |
 | GET | `/api/payroll/payslips/:id` | Bulletin officiel |
 | GET/PUT | `/api/settings` | Société + barème |
-| POST | `/api/settings/reset` | Reset démo |
+| POST | `/api/settings/reset` | Vide fiches / paie / demandes (pas Entra) |
 | GET/POST | `/api/leaves` | Congés |
 | GET/POST | `/api/advances` | Acomptes |
 | GET | `/api/documents` | Dossier RH |
@@ -383,15 +422,7 @@ curl -b /tmp/pf.jar -s http://127.0.0.1:45218/api/auth/me
 curl -b /tmp/pf.jar -s http://127.0.0.1:45218/api/entra/users
 ```
 
-### Import CSV employés
-
-En-têtes :
-
-```text
-firstName,lastName,email,phone,departmentCode,jobTitle,contractType,hireDate,baseSalary,iban,city,country
-```
-
-Codes département démo : `DG`, `RH`, `ING`, `OPS`, `FIN`, `CDP`.
+Les départements initiaux : `DG`, `RH`, `ING`, `OPS`, `FIN`, `CDP`.
 
 ---
 
@@ -431,11 +462,11 @@ Les champs société se règlent dans **Paramètres**. Les champs individuels (m
 | --- | --- |
 | Page blanche / login infini | `frontend/.env` manquant ou mal lu : relancer Vite après modification des `VITE_*` |
 | `Invalid API key` | URL Supabase et clé publishable ne sont pas du **même** projet |
-| `Email ou mot de passe incorrect` | Compte absent dans Supabase Auth, ou email non confirmé — ou mot de passe différent du tableau ci-dessus |
+| `Email ou mot de passe incorrect` | Ancien login local : utilisez uniquement **Se connecter avec Microsoft** |
 | `Session expirée` | Ancien jeton / cookie : déconnectez-vous, videz les cookies du site, relancez `npm run dev` (backend + frontend), reconnectez-vous |
 | `Service indisponible` | L’API n’est pas démarrée (`cd backend && npm run dev`) |
 | Port déjà utilisé | Changer le port Vite dans `frontend/vite.config.ts` (45217) ou tuer le processus qui occupe le port |
-| Données bizarres | Admin → Paramètres → Réinitialiser la démo |
+| Données bizarres | Admin → Paramètres → Vider les données métier |
 | Windows, `npm` introuvable | Installer Node **dans WSL**, lancer les commandes depuis Ubuntu |
 | `unzip` introuvable (WSL) | `sudo apt update && sudo apt install unzip` |
 | Docker : frontend sans login Supabase | Les `VITE_*` sont figés au `docker compose up --build` : reconstruire après changement de `.env` |
@@ -447,11 +478,11 @@ Les champs société se règlent dans **Paramètres**. Les champs individuels (m
 - Frontend : React 19, Vite 8, TypeScript, Tailwind 4, shadcn/ui, React Router 7, `@supabase/supabase-js`
 - Backend : Node 22, Express 5, Zod, JWT local (secours), Supabase Auth
 - Données locales : JSON (`backend/data/store.json`) avec verrou de fichier entre microservices
-- Auth : mot de passe vérifié en local ou chez Supabase, puis session dans un cookie `httpOnly` (pas de token dans `localStorage`)
+- Auth : Microsoft Entra ID (rôles `PAYFLOW_*`), session dans un cookie `httpOnly` (pas de token dans `localStorage`)
 - Conteneurs : Docker Compose, Node 22 Alpine (API), Nginx (frontend)
 
 ---
 
 ## Licence / usage
 
-Projet de démonstration interne. Les n° SIRET / sécu / IBAN du jeu de données sont **fictifs** (modèle de bulletin).
+Projet interne. Les n° SIRET / sécu / IBAN d’exemple dans les paramètres société sont **fictifs** (modèle de bulletin).

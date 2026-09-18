@@ -1,58 +1,22 @@
-import { Plus, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { toast } from "sonner";
 import { ErrorState, LoadingState } from "@/components/states";
 import { EmployeeBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { MicrosoftAssociateDialog } from "@/components/microsoft-associate-dialog";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { initials, money } from "@/lib/format";
 import { ficheBase } from "@/lib/roles";
-import type { Civility, ContractType, Department, Employee, EmployeeDraft, EmployeeStatus, Settings } from "@/lib/types";
+import type { ContractType, Department, Employee, EmployeeDraft, EmployeeStatus, Settings } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
-
-const emptyForm: EmployeeDraft = {
-  firstName: "",
-  lastName: "",
-  email: "",
-  phone: "",
-  departmentId: "",
-  jobTitle: "",
-  contractType: "CDI" as ContractType,
-  hireDate: new Date().toISOString().slice(0, 10),
-  baseSalary: 3000,
-  status: "active" as EmployeeStatus,
-  iban: "",
-  city: "",
-  country: "France",
-  civility: "M" as Civility,
-  matricule: "",
-  address: "",
-  postalCode: "",
-  socialSecurityNumber: "",
-  category: "Non Cadre",
-  coefficient: "220",
-  classificationIndex: "1.3.1",
-  qualification: "",
-  contractHours: 151.67,
-  pasRate: 0,
-  mealTicket5: 0,
-  mealTicket1650: 0,
-  contractEndDate: "",
-  entraUserPrincipalName: "",
-  directoryRole: "employee" as Employee["directoryRole"],
-};
 
 export function EmployeesPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
   const fiches = ficheBase(user?.role === "hr" ? "hr" : "admin");
   const employees = useApi<Employee[]>("/api/employees");
   const departments = useApi<Department[]>("/api/departments");
@@ -60,16 +24,6 @@ export function EmployeesPage() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [departmentId, setDepartmentId] = useState("all");
-  const [associate, setAssociate] = useState<Employee | null>(null);
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState(emptyForm);
-  const [saving, setSaving] = useState(false);
-  const [csv, setCsv] = useState(
-    "firstName,lastName,email,phone,departmentCode,jobTitle,contractType,hireDate,baseSalary,iban,city,country\nNora,Sy,nora.sy@payrollflow.demo,+221 77 000 11 22,RH,Juriste sociale,CDI,2026-09-01,3300,FR76 ACCT-000044,Dakar,Sénégal",
-  );
-  const [importReport, setImportReport] = useState<
-    { line: number; status: "created" | "skipped" | "error"; email?: string; reason?: string }[] | null
-  >(null);
 
   const filtered = useMemo(() => {
     const list = employees.data ?? [];
@@ -84,23 +38,6 @@ export function EmployeesPage() {
     });
   }, [employees.data, query, status, departmentId]);
 
-  async function createEmployee() {
-    setSaving(true);
-    try {
-      const created = await api<Employee>("/api/employees", { method: "POST", body: JSON.stringify(form) });
-      toast.success(
-        `Fiche RH créée pour ${created.firstName} ${created.lastName}. Associez ensuite le compte Microsoft depuis Utilisateurs.`,
-      );
-      setOpen(false);
-      setForm(emptyForm);
-      await employees.reload();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Création impossible");
-    } finally {
-      setSaving(false);
-    }
-  }
-
   if (employees.loading || departments.loading) return <LoadingState />;
   if (employees.error) return <ErrorState message={employees.error} onRetry={employees.reload} />;
 
@@ -113,101 +50,24 @@ export function EmployeesPage() {
         <div>
           <h2 className="font-display text-3xl sm:text-4xl">Fiches RH</h2>
           <p className="mt-2 text-sm text-ink/60">
-            {filtered.length} fiche{filtered.length > 1 ? "s" : ""} salarié{filtered.length > 1 ? "s" : ""} · paie et contrat.
-            {isAdmin ? " L’association Microsoft se fait dans Utilisateurs, par un administrateur." : " L’association Microsoft est gérée par l’administrateur."}
+            {filtered.length} fiche{filtered.length > 1 ? "s" : ""} créée{filtered.length > 1 ? "s" : ""} à la
+            première connexion Microsoft. Complétez contrat et salaire ici.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            onClick={async () => {
-              const file = await api<{ filename: string; csv: string }>("/api/employees/export");
-              const blob = new Blob([file.csv], { type: "text/csv;charset=utf-8" });
-              const link = document.createElement("a");
-              link.href = URL.createObjectURL(blob);
-              link.download = file.filename;
-              link.click();
-            }}
-          >
-            Export Excel (CSV)
-          </Button>
-          {isAdmin ? (
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={() => setForm({ ...emptyForm, departmentId: departments.data?.[0]?.id ?? "" })}>
-                  <Plus className="h-4 w-4" />
-                  Nouvel employé
-                </Button>
-              </DialogTrigger>
-              <DialogContent title="Ajouter un employé">
-                <EmployeeForm
-                  form={form}
-                  departments={departments.data ?? []}
-                  onChange={(value) => setForm({ ...emptyForm, ...value, contractEndDate: value.contractEndDate ?? "" })}
-                  onSubmit={createEmployee}
-                  saving={saving}
-                  showMicrosoftField={false}
-                />
-              </DialogContent>
-            </Dialog>
-          ) : null}
-        </div>
+        <Button
+          variant="outline"
+          onClick={async () => {
+            const file = await api<{ filename: string; csv: string }>("/api/employees/export");
+            const blob = new Blob([file.csv], { type: "text/csv;charset=utf-8" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = file.filename;
+            link.click();
+          }}
+        >
+          Export Excel (CSV)
+        </Button>
       </div>
-
-      {isAdmin ? (
-      <Card>
-        <CardContent className="space-y-3">
-          <p className="text-sm font-semibold">Import CSV (onboarding en masse)</p>
-          <textarea
-            className="h-24 w-full rounded-xl border border-ink/15 p-3 font-mono text-xs"
-            value={csv}
-            onChange={(e) => setCsv(e.target.value)}
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              try {
-                const result = await api<{
-                  imported: number;
-                  skipped: number;
-                  errors: number;
-                  report: { line: number; status: "created" | "skipped" | "error"; email?: string; reason?: string }[];
-                }>("/api/employees/import", {
-                  method: "POST",
-                  body: JSON.stringify({ csv }),
-                });
-                setImportReport(result.report);
-                toast.success(`${result.imported} créé(s) · ${result.skipped} ignoré(s) · ${result.errors} erreur(s)`);
-                await employees.reload();
-              } catch (err) {
-                toast.error(err instanceof Error ? err.message : "Import impossible");
-              }
-            }}
-          >
-            Importer le fichier
-          </Button>
-          {importReport ? (
-            <div className="overflow-hidden rounded-2xl border border-ink/10 text-xs">
-              {importReport.map((row) => (
-                <div key={`${row.line}-${row.email ?? ""}`} className="flex gap-3 border-b border-ink/6 px-3 py-2 last:border-0">
-                  <span className="w-12 shrink-0 text-ink/40">L.{row.line}</span>
-                  <span
-                    className={
-                      row.status === "created" ? "text-sage" : row.status === "skipped" ? "text-amber-700" : "text-red-700"
-                    }
-                  >
-                    {row.status}
-                  </span>
-                  <span className="truncate text-ink/70">{row.email ?? "—"}</span>
-                  <span className="text-ink/50">{row.reason ?? ""}</span>
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
-      ) : null}
 
       <Card>
         <CardContent className="grid gap-3 md:grid-cols-4">
@@ -242,14 +102,17 @@ export function EmployeesPage() {
           <span></span>
         </div>
         {filtered.length === 0 ? (
-          <p className="px-5 py-12 text-center text-sm text-ink/50">Aucun employé ne correspond à ces filtres.</p>
+          <p className="px-5 py-12 text-center text-sm text-ink/50">
+            Aucune fiche pour l’instant. Elle apparaît dès qu’un compte PAYFLOW_EMPLOYEE se connecte avec Microsoft.
+          </p>
         ) : (
           filtered.map((employee) => (
-            <div
+            <Link
               key={employee.id}
-              className="grid gap-2 border-b border-ink/6 px-5 py-4 last:border-b-0 md:grid-cols-[2fr_1.2fr_1fr_1fr_1fr_auto] md:items-center"
+              to={`${fiches}/${employee.id}`}
+              className="grid gap-2 border-b border-ink/6 px-5 py-4 last:border-b-0 hover:bg-paper/70 md:grid-cols-[2fr_1.2fr_1fr_1fr_1fr_auto] md:items-center"
             >
-              <Link to={`${fiches}/${employee.id}`} className="flex items-center gap-3 hover:opacity-90">
+              <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sage-dark text-xs font-semibold text-white">
                   {initials(employee.firstName, employee.lastName)}
                 </div>
@@ -258,52 +121,22 @@ export function EmployeesPage() {
                     {employee.firstName} {employee.lastName}
                   </p>
                   <p className="text-xs text-ink/50">
-                    {deptMap[employee.departmentId]?.name ?? "—"} · {employee.city}
+                    {deptMap[employee.departmentId]?.name ?? "—"} · {employee.entraUserPrincipalName || employee.email}
                   </p>
                 </div>
-              </Link>
+              </div>
               <p className="text-sm">{employee.jobTitle}</p>
               <div className="flex items-center gap-2">
                 <span className="text-sm">{employee.contractType}</span>
-                {employee.contractEndDate ? (
-                  <span className="text-[11px] text-ink/45">fin {employee.contractEndDate}</span>
-                ) : null}
                 <EmployeeBadge status={employee.status} />
               </div>
-              <p className="font-medium">{money(employee.baseSalary, currency)}</p>
-              <p className="text-xs text-ink/55">
-                {employee.entraObjectId
-                  ? employee.entraUserPrincipalName || "Lié"
-                  : "Non associé"}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Link to={`${fiches}/${employee.id}`} className="text-sm text-sage">
-                  Ouvrir
-                </Link>
-                {isAdmin ? (
-                  <button
-                    type="button"
-                    className="text-sm font-semibold text-ink hover:underline"
-                    onClick={() => setAssociate(employee)}
-                  >
-                    Associer
-                  </button>
-                ) : null}
-              </div>
-            </div>
+              <p className="font-medium">{employee.baseSalary > 0 ? money(employee.baseSalary, currency) : "À renseigner"}</p>
+              <p className="truncate text-xs text-ink/55">{employee.entraUserPrincipalName || "Entra"}</p>
+              <span className="text-sm text-sage">Ouvrir</span>
+            </Link>
           ))
         )}
       </div>
-      <MicrosoftAssociateDialog
-        employee={associate}
-        open={Boolean(associate)}
-        onOpenChange={(openDialog) => {
-          if (!openDialog) setAssociate(null);
-        }}
-        onLinked={() => {
-          void employees.reload();
-        }}
-      />
     </div>
   );
 }
@@ -314,14 +147,12 @@ export function EmployeeForm({
   onChange,
   onSubmit,
   saving,
-  showMicrosoftField = false,
 }: {
   form: EmployeeDraft;
   departments: Department[];
   onChange: (value: EmployeeDraft) => void;
   onSubmit: () => void;
   saving: boolean;
-  showMicrosoftField?: boolean;
 }) {
   function set<K extends keyof EmployeeDraft>(key: K, value: EmployeeDraft[K]) {
     onChange({ ...form, [key]: value });
@@ -335,25 +166,15 @@ export function EmployeeForm({
         onSubmit();
       }}
     >
-      <Field label="Prénom">
-        <Input value={form.firstName} onChange={(e) => set("firstName", e.target.value)} required />
+      <Field label="Prénom (Microsoft)">
+        <Input value={form.firstName} disabled />
       </Field>
-      <Field label="Nom">
-        <Input value={form.lastName} onChange={(e) => set("lastName", e.target.value)} required />
+      <Field label="Nom (Microsoft)">
+        <Input value={form.lastName} disabled />
       </Field>
-      <Field label="Email professionnel (fiche RH)">
-        <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} required />
+      <Field label="Email / UPN Microsoft">
+        <Input type="email" value={form.entraUserPrincipalName || form.email} disabled />
       </Field>
-      {showMicrosoftField ? (
-        <Field label="Compte Microsoft (UPN Entra)">
-          <Input
-            type="email"
-            value={form.entraUserPrincipalName ?? ""}
-            onChange={(e) => set("entraUserPrincipalName", e.target.value)}
-            placeholder="emp-01@votre-tenant.onmicrosoft.com"
-          />
-        </Field>
-      ) : null}
       <Field label="Téléphone">
         <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} required />
       </Field>
@@ -392,7 +213,7 @@ export function EmployeeForm({
         <Input type="date" value={form.contractEndDate ?? ""} onChange={(e) => set("contractEndDate", e.target.value)} />
       </Field>
       <Field label="Salaire brut mensuel">
-        <Input type="number" min={1} value={form.baseSalary} onChange={(e) => set("baseSalary", Number(e.target.value))} required />
+        <Input type="number" min={0} value={form.baseSalary} onChange={(e) => set("baseSalary", Number(e.target.value))} required />
       </Field>
       <Field label="Ville">
         <Input value={form.city} onChange={(e) => set("city", e.target.value)} required />
@@ -407,7 +228,7 @@ export function EmployeeForm({
         </Select>
       </Field>
       <Field label="Matricule">
-        <Input value={form.matricule} onChange={(e) => set("matricule", e.target.value)} placeholder="1212" />
+        <Input value={form.matricule} onChange={(e) => set("matricule", e.target.value)} />
       </Field>
       <Field label="Adresse">
         <Input value={form.address} onChange={(e) => set("address", e.target.value)} />
@@ -447,12 +268,12 @@ export function EmployeeForm({
       </Field>
       <div className="sm:col-span-2">
         <Field label="IBAN">
-          <Input value={form.iban} onChange={(e) => set("iban", e.target.value)} required />
+          <Input value={form.iban} onChange={(e) => set("iban", e.target.value)} />
         </Field>
       </div>
       <div className="sm:col-span-2 flex justify-end">
         <Button type="submit" disabled={saving}>
-          {saving ? "Enregistrement…" : "Enregistrer"}
+          {saving ? "Enregistrement…" : "Enregistrer le contrat et la paie"}
         </Button>
       </div>
     </form>

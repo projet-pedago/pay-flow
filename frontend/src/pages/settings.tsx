@@ -39,10 +39,10 @@ export function SettingsPage() {
     }
   }
 
-  async function resetDemo() {
-    if (!confirm("Réinitialiser le jeu de données de démonstration ?")) return;
+  async function resetOperationalData() {
+    if (!confirm("Vider les fiches internes, bulletins et demandes ? Les comptes Microsoft Entra ne sont pas touchés : leur fiche se recrée à la prochaine connexion.")) return;
     await api("/api/settings/reset", { method: "POST" });
-    toast.success("Données de démo restaurées");
+    toast.success("Données métier vidées. Les identités restent dans Entra ID.");
     window.location.href = "/";
   }
 
@@ -54,8 +54,8 @@ export function SettingsPage() {
           <p className="mt-2 text-sm text-ink/60">Identité employeur du bulletin officiel, devise et barème de cotisations.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => void resetDemo()}>
-            Réinitialiser la démo
+          <Button variant="outline" onClick={() => void resetOperationalData()}>
+            Vider les données métier
           </Button>
           <Button onClick={() => void save()} disabled={saving}>
             {saving ? "Sauvegarde…" : "Enregistrer"}

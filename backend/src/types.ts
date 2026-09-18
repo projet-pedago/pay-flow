@@ -220,6 +220,7 @@ export type AuditEvent = {
 };
 
 export type Store = {
+  schemaVersion?: number;
   settings: Settings;
   departments: Department[];
   employees: Employee[];

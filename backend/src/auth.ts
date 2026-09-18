@@ -3,7 +3,8 @@ import bcrypt from "bcryptjs";
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "./lib/env.js";
-import { linkMicrosoftEmployee } from "./lib/entra-link.js";
+import { provisionMicrosoftProfile } from "./lib/entra-link.js";
+import { loadStore } from "./lib/store.js";
 import { getSupabase } from "./lib/supabase.js";
 import { isStaff } from "./lib/roles.js";
 import type { Role } from "./types.js";
@@ -151,8 +152,16 @@ export function getUser(req: Request): TokenUser {
 }
 
 function attachEmployeeFiche(user: TokenUser): TokenUser {
-  if (user.role !== "employee") return user;
-  const linked = linkMicrosoftEmployee({ id: user.id, email: user.email });
+  if (user.employeeId) {
+    const existing = loadStore().employees.find((item) => item.id === user.employeeId);
+    if (existing) return user;
+  }
+  const linked = provisionMicrosoftProfile({
+    oid: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+  });
   user.employeeId = linked?.id;
   return user;
 }

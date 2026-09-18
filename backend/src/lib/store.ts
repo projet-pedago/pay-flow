@@ -3,7 +3,7 @@ import { closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, s
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Store } from "../types.js";
-import { buildNetwork, createSeed } from "./seed.js";
+import { createSeed } from "./seed.js";
 
 const dataDir = process.env.DATA_DIR ?? join(dirname(fileURLToPath(import.meta.url)), "../../data");
 const storePath = join(dataDir, "store.json");
@@ -59,17 +59,30 @@ function writeStore(store: Store): void {
   renameSync(tmp, storePath);
 }
 
-function readAndMigrate(): Store {
-  if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true });
-  if (!existsSync(storePath)) {
-    const seeded = createSeed();
-    writeStore(seeded);
-    return seeded;
-  }
-  const store = JSON.parse(readFileSync(storePath, "utf8")) as Store;
+export const CURRENT_SCHEMA = 8;
+
+/**
+ * Schema 8 drops demo people and payroll objects (users, employees, payslips,
+ * leaves, advances, documents, notifications) and keeps departments, settings
+ * and URSSAF rates. Microsoft fiches created after the purge stay: their store
+ * already has schemaVersion >= 8.
+ */
+export function applyStoreMigrations(store: Store): boolean {
   let dirty = false;
-  if (store.users?.length) {
+  if ((store.schemaVersion ?? 0) < CURRENT_SCHEMA) {
+    store.employees = [];
+    store.payslips = [];
+    store.periods = [];
+    store.leaves = [];
+    store.advances = [];
+    store.documents = [];
+    store.notifications = [];
     store.users = [];
+    store.auditLog = [];
+    store.clients = [];
+    store.partners = [];
+    store.invoices = [];
+    store.schemaVersion = CURRENT_SCHEMA;
     dirty = true;
   }
   if (!Array.isArray(store.users)) {
@@ -92,11 +105,16 @@ function readAndMigrate(): Store {
     store.notifications = [];
     dirty = true;
   }
-  if (!Array.isArray(store.clients) || !store.clients.length) {
-    const network = buildNetwork();
-    store.clients = network.clients;
-    store.partners = network.partners;
-    store.invoices = network.invoices;
+  if (!Array.isArray(store.clients)) {
+    store.clients = [];
+    dirty = true;
+  }
+  if (!Array.isArray(store.partners)) {
+    store.partners = [];
+    dirty = true;
+  }
+  if (!Array.isArray(store.invoices)) {
+    store.invoices = [];
     dirty = true;
   }
   if (!Array.isArray(store.auditLog)) {
@@ -107,17 +125,6 @@ function readAndMigrate(): Store {
     store.settings.advanceCapRatio = 0.3;
     dirty = true;
   }
-  store.employees = store.employees.map((employee) => {
-    if (employee.id === "emp-008" && !employee.contractEndDate) {
-      dirty = true;
-      return { ...employee, contractEndDate: "2026-10-31" };
-    }
-    if (employee.id === "emp-012" && !employee.contractEndDate) {
-      dirty = true;
-      return { ...employee, contractEndDate: "2027-08-31" };
-    }
-    return employee;
-  });
   if (!store.settings.companyAddress) {
     store.settings = {
       ...store.settings,
@@ -161,7 +168,18 @@ function readAndMigrate(): Store {
       directoryRole: next.directoryRole ?? "employee",
     };
   });
-  if (dirty) writeStore(store);
+  return dirty;
+}
+
+function readAndMigrate(): Store {
+  if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true });
+  if (!existsSync(storePath)) {
+    const seeded = createSeed();
+    writeStore(seeded);
+    return seeded;
+  }
+  const store = JSON.parse(readFileSync(storePath, "utf8")) as Store;
+  if (applyStoreMigrations(store)) writeStore(store);
   return store;
 }
 

@@ -33,6 +33,8 @@ meProfileRouter.put("/profile", (req, res) => {
       phone: z.string().min(3).optional(),
       city: z.string().min(1).optional(),
       country: z.string().min(1).optional(),
+      address: z.string().optional(),
+      postalCode: z.string().optional(),
       iban: z.string().min(4).optional(),
     })
     .safeParse(req.body);

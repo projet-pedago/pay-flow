@@ -46,6 +46,8 @@ export async function verifyMicrosoftTokens(input: {
 }): Promise<{
   email: string;
   name: string;
+  givenName: string;
+  familyName: string;
   sub: string;
   oid: string;
   tenantId: string;
@@ -125,12 +127,16 @@ export async function verifyMicrosoftTokens(input: {
   }
 
   const name = String(idClaims.name ?? accessClaims.name ?? email);
+  const givenName = String(idClaims.given_name ?? accessClaims.given_name ?? "").trim();
+  const familyName = String(idClaims.family_name ?? accessClaims.family_name ?? "").trim();
 
   const sub = String(accessPayload?.sub ?? idPayload?.sub ?? oid ?? email);
 
   return {
     email,
     name,
+    givenName,
+    familyName,
     sub,
     oid,
     tenantId: tokenTenantId || tid,
