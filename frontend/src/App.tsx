@@ -2,6 +2,7 @@ import { AssistantDock } from "@/components/assistant-dock";
 import { EmployeeLayout } from "@/components/employee-layout";
 import { GuestOnly, HomeRedirect, RequireAuth } from "@/components/guards";
 import { AdminLayout } from "@/components/layout";
+import { MicrosoftSessionBridge } from "@/components/microsoft-session";
 import { AuthProvider } from "@/lib/auth";
 import { AssistantPage } from "@/pages/assistant";
 import { AttestationPage } from "@/pages/attestation";
@@ -47,6 +48,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <MicrosoftSessionBridge />
         <Routes>
           <Route path="/" element={<HomeRedirect />} />
           <Route

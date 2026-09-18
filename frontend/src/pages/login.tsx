@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useMsal } from "@azure/msal-react";
 import { toast } from "sonner";
 import { BrandLogo, TechIcon } from "@/components/brand-logo";
 import { FadeIn } from "@/components/fade-in";
@@ -7,29 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
+import { loginRequest, microsoftConfigured } from "@/lib/msal";
 import { ecosystemLogos, photos, stackLogos } from "@/lib/media";
-
-const demos = [
-  {
-    role: "Administrateur",
-    email: "admin@payrollflow.demo",
-    password: "AdminHorizon2026!",
-    hint: "Pilotage RH, cycles de paie, paramètres",
-  },
-  {
-    role: "Collaborateur — bulletin officiel",
-    email: "yao.lassidan@payrollflow.demo",
-    password: "Horizon2026!",
-    hint: "Fiche de paie identique au bulletin Cerfa (août 2026)",
-  },
-];
 
 export function LoginPage() {
   const { login } = useAuth();
+  const { instance } = useMsal();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
+  const [microsoftSaving, setMicrosoftSaving] = useState(false);
 
   async function submit() {
     setSaving(true);
@@ -40,6 +29,20 @@ export function LoginPage() {
       toast.error(err instanceof Error ? err.message : "Connexion impossible");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function loginWithMicrosoft() {
+    if (!microsoftConfigured()) {
+      toast.error("Microsoft Entra ID n’est pas configuré (VITE_AZURE_CLIENT_ID / VITE_AZURE_TENANT_ID).");
+      return;
+    }
+    setMicrosoftSaving(true);
+    try {
+      await instance.loginRedirect(loginRequest);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Connexion Microsoft impossible");
+      setMicrosoftSaving(false);
     }
   }
 
@@ -112,29 +115,27 @@ export function LoginPage() {
               <Label>Mot de passe</Label>
               <Input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
-            <Button className="w-full" type="submit" disabled={saving}>
+            <Button className="w-full" type="submit" disabled={saving || microsoftSaving}>
               {saving ? "Connexion…" : "Entrer"}
             </Button>
           </form>
 
-          <div className="mt-8 space-y-3">
-            <p className="text-xs font-semibold tracking-wide text-ink/40 uppercase">Comptes de démonstration</p>
-            {demos.map((demo) => (
-              <button
-                key={demo.email}
-                type="button"
-                onClick={() => {
-                  setEmail(demo.email);
-                  setPassword(demo.password);
-                }}
-                className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-left transition hover:border-sage/40 hover:shadow-sm"
-              >
-                <p className="text-sm font-semibold">{demo.role}</p>
-                <p className="text-xs text-ink/50">{demo.email}</p>
-                <p className="mt-1 text-xs text-ink/40">{demo.hint}</p>
-              </button>
-            ))}
+          <div className="my-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-ink/10" />
+            <span className="text-xs text-ink/40">ou</span>
+            <div className="h-px flex-1 bg-ink/10" />
           </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            disabled={saving || microsoftSaving}
+            onClick={() => void loginWithMicrosoft()}
+          >
+            {microsoftSaving ? "Connexion Microsoft…" : "Se connecter avec Microsoft"}
+          </Button>
+          <p className="mt-3 text-center text-xs text-ink/40">Connexion sécurisée avec Microsoft Entra ID</p>
         </FadeIn>
       </section>
     </div>

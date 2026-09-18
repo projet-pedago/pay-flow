@@ -190,6 +190,7 @@ La clé **secret** ne doit **jamais** aller dans le frontend ni dans Git. `JWT_S
 | --- | --- | --- |
 | Local | `SUPABASE_URL` vide | Email + mot de passe dans `store.json` |
 | Supabase | URL + publishable renseignés | Mot de passe vérifié chez Supabase, rôle admin / employé rattaché à la fiche locale |
+| Microsoft Entra ID | `VITE_AZURE_CLIENT_ID` + `AZURE_CLIENT_ID` | Bouton **Se connecter avec Microsoft**. L’email Entra ID doit exister dans PayRollFlow. Redirect URI : `http://127.0.0.1:45217/login` |
 
 Dans les deux cas, la session navigateur est un cookie `httpOnly` (pas de jeton dans `localStorage`).
 
@@ -338,6 +339,7 @@ Toutes les routes (sauf login / health) exigent le cookie httpOnly `payrollflow_
 | Méthode | Chemin | Usage |
 | --- | --- | --- |
 | POST | `/api/auth/login` | Email + mot de passe |
+| POST | `/api/auth/microsoft` | Jeton ID Entra ID → session cookie |
 | GET | `/api/auth/me` | Session courante |
 | GET/POST/PUT | `/api/employees` | Fiches RH (admin) |
 | POST | `/api/employees/import` | Import CSV |

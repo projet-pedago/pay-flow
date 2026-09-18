@@ -11,6 +11,8 @@ services:
       SUPABASE_URL: ${SUPABASE_URL:-}
       SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
       SUPABASE_SECRET_KEY: ${SUPABASE_SECRET_KEY:-}
+      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID:-}
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID:-common}
     volumes:
       - payroll-data:/app/data
     expose:
@@ -97,6 +99,8 @@ services:
       args:
         VITE_SUPABASE_URL: ${SUPABASE_URL:-}
         VITE_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
+        VITE_AZURE_CLIENT_ID: ${AZURE_CLIENT_ID:-}
+        VITE_AZURE_TENANT_ID: ${AZURE_TENANT_ID:-common}
     container_name: payrollflow-web
     ports:
       - "45217:80"

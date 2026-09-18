@@ -13,6 +13,7 @@ import {
 } from "../../auth.js";
 import { createService } from "../../http.js";
 import { loginRateLimit, recordLoginFailure, recordLoginSuccess } from "../../lib/rate-limit.js";
+import { azureConfigured, verifyMicrosoftIdToken } from "../../lib/azure.js";
 import { getSupabase } from "../../lib/supabase.js";
 import { loadStore } from "../../lib/store.js";
 
@@ -65,6 +66,35 @@ createService("payrollflow-auth", port, (app) => {
     recordLoginSuccess(req);
     setAuthCookie(res, signToken(tokenUser));
     res.json({ user: publicUser(tokenUser), provider: "local" });
+  });
+
+  app.post("/api/auth/microsoft", loginRateLimit, async (req, res) => {
+    if (!azureConfigured()) {
+      res.status(503).json({ error: "Microsoft Entra ID n’est pas configuré" });
+      return;
+    }
+    const parsed = z.object({ idToken: z.string().min(20) }).safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Jeton Microsoft manquant" });
+      return;
+    }
+    try {
+      const profile = await verifyMicrosoftIdToken(parsed.data.idToken);
+      const user = await tokenUserFromEmail(profile.email);
+      if (!user) {
+        recordLoginFailure(req);
+        res.status(403).json({
+          error: "Compte Microsoft authentifié mais non rattaché à PayRollFlow. L’email Entra ID doit exister côté RH.",
+        });
+        return;
+      }
+      recordLoginSuccess(req);
+      setAuthCookie(res, signToken({ ...user, name: user.name || profile.name }));
+      res.json({ user: publicUser(user), provider: "microsoft" });
+    } catch (error) {
+      recordLoginFailure(req);
+      res.status(401).json({ error: error instanceof Error ? error.message : "Jeton Microsoft refusé" });
+    }
   });
 
   app.get("/api/auth/me", requireAuth, (req, res) => {
