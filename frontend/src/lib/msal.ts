@@ -1,39 +1,54 @@
-import { PublicClientApplication, type Configuration, type RedirectRequest } from "@azure/msal-browser";
+import {
+  PublicClientApplication,
+  type Configuration,
+} from "@azure/msal-browser";
 
-const clientId = (import.meta.env.VITE_AZURE_CLIENT_ID ?? "").trim();
-const tenantId = (import.meta.env.VITE_AZURE_TENANT_ID ?? "common").trim() || "common";
+const clientId = import.meta.env.VITE_AZURE_CLIENT_ID;
+const tenantId = import.meta.env.VITE_AZURE_TENANT_ID;
+const apiClientId = import.meta.env.VITE_AZURE_API_CLIENT_ID;
 
-export function microsoftConfigured(): boolean {
-  return Boolean(clientId);
+if (!clientId || !tenantId) {
+  throw new Error(
+    "Microsoft Entra ID n’est pas configuré (VITE_AZURE_CLIENT_ID / VITE_AZURE_TENANT_ID).",
+  );
 }
 
-const redirectUri =
-  (import.meta.env.VITE_AZURE_REDIRECT_URI ?? "").trim() ||
-  (typeof window !== "undefined" ? `${window.location.origin}/login` : "http://127.0.0.1:45217/login");
+if (!apiClientId) {
+  throw new Error(
+    "VITE_AZURE_API_CLIENT_ID n’est pas configuré.",
+  );
+}
 
-const config: Configuration = {
+const msalConfig: Configuration = {
   auth: {
-    clientId: clientId || "00000000-0000-0000-0000-000000000000",
+    clientId,
     authority: `https://login.microsoftonline.com/${tenantId}`,
-    redirectUri,
-    postLogoutRedirectUri: typeof window !== "undefined" ? `${window.location.origin}/login` : redirectUri,
+    redirectUri: window.location.origin,
+    postLogoutRedirectUri: window.location.origin,
   },
   cache: {
     cacheLocation: "sessionStorage",
   },
 };
 
-export const msalInstance = new PublicClientApplication(config);
-
-export const loginRequest: RedirectRequest = {
-  scopes: ["openid", "profile", "email"],
+export const loginRequest = {
+  scopes: [
+    "openid",
+    "profile",
+    `api://${apiClientId}/access_as_user`,
+  ],
 };
+
+export const msalInstance = new PublicClientApplication(msalConfig);
 
 export async function clearMsalSession(): Promise<void> {
   try {
     const accounts = msalInstance.getAllAccounts();
     if (accounts[0]) {
-      await msalInstance.logoutPopup({ account: accounts[0], mainWindowRedirectUri: "/login" }).catch(async () => {
+      await msalInstance.logoutPopup({
+        account: accounts[0],
+        mainWindowRedirectUri: window.location.origin,
+      }).catch(async () => {
         await msalInstance.clearCache();
       });
       return;

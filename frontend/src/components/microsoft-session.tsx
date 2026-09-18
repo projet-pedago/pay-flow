@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
-import { loginRequest, microsoftConfigured } from "@/lib/msal";
+import { loginRequest } from "@/lib/msal";
 
 /** Après le retour Entra ID, échange le jeton Microsoft contre la session PayRollFlow. */
 export function MicrosoftSessionBridge() {
@@ -14,7 +14,6 @@ export function MicrosoftSessionBridge() {
   const once = useRef(false);
 
   useEffect(() => {
-    if (!microsoftConfigured()) return;
     if (loading || user) return;
     if (inProgress !== InteractionStatus.None) return;
     const account = accounts[0];
@@ -24,8 +23,11 @@ export function MicrosoftSessionBridge() {
     void (async () => {
       try {
         const result = await instance.acquireTokenSilent({ ...loginRequest, account });
-        if (!result.idToken) throw new Error("Microsoft n’a pas renvoyé de jeton");
-        const me = await loginMicrosoft(result.idToken);
+        if (!result.accessToken) throw new Error("Microsoft n’a pas renvoyé de jeton d’accès");
+        const me = await loginMicrosoft({
+          accessToken: result.accessToken,
+          idToken: result.idToken || undefined,
+        });
         navigate(me.role === "admin" ? "/admin" : "/espace", { replace: true });
       } catch (err) {
         once.current = false;

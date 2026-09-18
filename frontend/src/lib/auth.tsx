@@ -14,7 +14,7 @@ type AuthContextValue = {
   user: SessionUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<SessionUser>;
-  loginMicrosoft: (idToken: string) => Promise<SessionUser>;
+  loginMicrosoft: (tokens: { accessToken: string; idToken?: string }) => Promise<SessionUser>;
   logout: () => void;
 };
 
@@ -54,10 +54,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(me);
         return me;
       },
-      async loginMicrosoft(idToken) {
+      async loginMicrosoft(tokens) {
         await api("/api/auth/microsoft", {
           method: "POST",
-          body: JSON.stringify({ idToken }),
+          body: JSON.stringify(tokens),
         });
         const me = await api<SessionUser>("/api/auth/me");
         setUser(me);

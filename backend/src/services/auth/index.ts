@@ -13,7 +13,7 @@ import {
 } from "../../auth.js";
 import { createService } from "../../http.js";
 import { loginRateLimit, recordLoginFailure, recordLoginSuccess } from "../../lib/rate-limit.js";
-import { azureConfigured, verifyMicrosoftIdToken } from "../../lib/azure.js";
+import { azureConfigured, verifyMicrosoftTokens } from "../../lib/azure.js";
 import { getSupabase } from "../../lib/supabase.js";
 import { loadStore } from "../../lib/store.js";
 
@@ -73,13 +73,19 @@ createService("payrollflow-auth", port, (app) => {
       res.status(503).json({ error: "Microsoft Entra ID n’est pas configuré" });
       return;
     }
-    const parsed = z.object({ idToken: z.string().min(20) }).safeParse(req.body);
+    const parsed = z
+      .object({
+        accessToken: z.string().min(20).optional(),
+        idToken: z.string().min(20).optional(),
+      })
+      .refine((value) => Boolean(value.accessToken || value.idToken))
+      .safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: "Jeton Microsoft manquant" });
       return;
     }
     try {
-      const profile = await verifyMicrosoftIdToken(parsed.data.idToken);
+      const profile = await verifyMicrosoftTokens(parsed.data);
       const user = await tokenUserFromEmail(profile.email);
       if (!user) {
         recordLoginFailure(req);

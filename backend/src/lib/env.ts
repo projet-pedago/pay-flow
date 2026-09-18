@@ -8,10 +8,12 @@ const candidates = [
   join(here, "../../.env"),
   join(here, "../../../.env"),
   join(process.cwd(), ".env"),
+  join(here, "../../.env.local"),
+  join(process.cwd(), ".env.local"),
 ];
 
 for (const file of candidates) {
-  if (existsSync(file)) config({ path: file, override: false });
+  if (existsSync(file)) config({ path: file, override: file.endsWith(".env.local") });
 }
 
 export const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? "";

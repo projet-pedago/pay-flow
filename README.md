@@ -190,9 +190,38 @@ La clé **secret** ne doit **jamais** aller dans le frontend ni dans Git. `JWT_S
 | --- | --- | --- |
 | Local | `SUPABASE_URL` vide | Email + mot de passe dans `store.json` |
 | Supabase | URL + publishable renseignés | Mot de passe vérifié chez Supabase, rôle admin / employé rattaché à la fiche locale |
-| Microsoft Entra ID | `VITE_AZURE_CLIENT_ID` + `AZURE_CLIENT_ID` | Bouton **Se connecter avec Microsoft**. L’email Entra ID doit exister dans PayRollFlow. Redirect URI : `http://127.0.0.1:45217/login` |
+| Microsoft Entra ID | `frontend/.env.local` (`VITE_AZURE_CLIENT_ID`, `VITE_AZURE_TENANT_ID`, `VITE_AZURE_API_CLIENT_ID`) + mêmes IDs côté API (`AZURE_*`) | Bouton **Se connecter avec Microsoft**. Scope `api://{API}/access_as_user`. L’email Entra ID doit exister dans PayRollFlow. Redirect URI SPA : origine (`http://127.0.0.1:45217` et `http://localhost:45217`). Redémarrer Vite après tout changement d’env. Pas de Client Secret dans un `VITE_*`. |
 
 Dans les deux cas, la session navigateur est un cookie `httpOnly` (pas de jeton dans `localStorage`).
+
+### Microsoft Entra ID
+
+Vite charge `frontend/.env.local` **au démarrage**. Un simple rafraîchissement navigateur ne suffit pas : arrêtez Vite (`Ctrl + C`) puis `npm run dev`.
+
+`frontend/.env.local` (jamais Git, jamais de Client Secret) :
+
+```env
+VITE_AZURE_CLIENT_ID=
+VITE_AZURE_TENANT_ID=
+VITE_AZURE_API_CLIENT_ID=
+```
+
+`backend/.env` :
+
+```env
+AZURE_CLIENT_ID=
+AZURE_TENANT_ID=
+AZURE_API_CLIENT_ID=
+```
+
+Dans Entra ID → App registrations → **PayFlow-Frontend** → Authentication → Single-page application, ajoutez :
+
+- `http://127.0.0.1:45217`
+- `http://localhost:45217`
+
+L’application API doit exposer le périmètre `access_as_user`. Le bouton **Se connecter avec Microsoft** demande `openid`, `profile` et `api://{VITE_AZURE_API_CLIENT_ID}/access_as_user`. L’email du compte Entra (ex. Test Employee) doit déjà exister dans PayRollFlow.
+
+Si une erreur **AADSTS…** apparaît après le redémarrage, le code complet indique la prochaine correction (URI de redirection, consentement, audience).
 
 Sans secret, le **login** fonctionne. La secret sert surtout à **créer un compte Auth** quand un admin ajoute un employé.
 
@@ -266,10 +295,12 @@ docker compose up --build
 - Interface : http://127.0.0.1:45217
 - API : http://127.0.0.1:45218
 
-Les clés frontend (`VITE_…`) sont injectées **au build** de l’image à partir de `SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY` du `.env` racine. Si vous changez Supabase, reconstruisez :
+Les clés frontend (`VITE_…`) sont injectées **au build** de l’image à partir du `.env` racine (`SUPABASE_*`, `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_API_CLIENT_ID`). Un `.env.local` Vite n’est **pas** lu dans l’image déjà construite. Après un changement Azure / Supabase :
 
 ```bash
-docker compose up --build
+docker compose down
+docker compose build --no-cache frontend
+docker compose up -d
 ```
 
 Arrêt : `docker compose down`. Les données JSON vivent dans le volume Docker `payroll-data`.
@@ -339,7 +370,7 @@ Toutes les routes (sauf login / health) exigent le cookie httpOnly `payrollflow_
 | Méthode | Chemin | Usage |
 | --- | --- | --- |
 | POST | `/api/auth/login` | Email + mot de passe |
-| POST | `/api/auth/microsoft` | Jeton ID Entra ID → session cookie |
+| POST | `/api/auth/microsoft` | Jeton d’accès Entra (`access_as_user`) → session cookie |
 | GET | `/api/auth/me` | Session courante |
 | GET/POST/PUT | `/api/employees` | Fiches RH (admin) |
 | POST | `/api/employees/import` | Import CSV |

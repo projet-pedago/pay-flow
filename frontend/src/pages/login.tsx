@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
-import { loginRequest, microsoftConfigured } from "@/lib/msal";
+import { loginRequest } from "@/lib/msal";
 import { ecosystemLogos, photos, stackLogos } from "@/lib/media";
 
 export function LoginPage() {
@@ -33,10 +33,6 @@ export function LoginPage() {
   }
 
   async function loginWithMicrosoft() {
-    if (!microsoftConfigured()) {
-      toast.error("Microsoft Entra ID n’est pas configuré (VITE_AZURE_CLIENT_ID / VITE_AZURE_TENANT_ID).");
-      return;
-    }
     setMicrosoftSaving(true);
     try {
       await instance.loginRedirect(loginRequest);
