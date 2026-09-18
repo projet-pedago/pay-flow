@@ -2,6 +2,21 @@ const GRAPH = "https://graph.microsoft.com/v1.0";
 const PAYFLOW_ROLES = ["PAYFLOW_ADMIN", "PAYFLOW_HR", "PAYFLOW_EMPLOYEE"] as const;
 export type PayflowEntraRole = (typeof PAYFLOW_ROLES)[number];
 
+const PAYFLOW_RESOURCE = "PayFlow";
+const SKIP_RESOURCES = new Set(["PayFlow-Frontend", "PayFlow-Provisioning"]);
+const DEFAULT_ASSIGNMENT_ROLE_ID = "00000000-0000-0000-0000-000000000000";
+
+/**
+ * Identifiants des rôles applicatifs PayFlow (app registration API).
+ * Utilisés quand Graph refuse /servicePrincipals (pas Application.Read.All).
+ * Surcharge : AZURE_PAYFLOW_ROLE_ADMIN_ID / _HR_ID / _EMPLOYEE_ID.
+ */
+export const FALLBACK_PAYFLOW_APPROLE_IDS: Record<string, PayflowEntraRole> = {
+  "68b0c89b-e615-470a-8a92-50f57b07a4be": "PAYFLOW_ADMIN",
+  "13f289a4-a8c1-41ad-afe5-64040b587b26": "PAYFLOW_HR",
+  "394165ce-9655-44b9-aca2-12b406dcc69a": "PAYFLOW_EMPLOYEE",
+};
+
 export type EntraDirectoryUser = {
   id: string;
   displayName: string;
@@ -11,6 +26,13 @@ export type EntraDirectoryUser = {
   roles: PayflowEntraRole[];
   linkedEmployeeId: string | null;
   linkedEmployeeName: string | null;
+};
+
+export type GraphAppRoleAssignment = {
+  appRoleId?: string;
+  resourceDisplayName?: string | null;
+  resourceId?: string;
+  principalType?: string;
 };
 
 type GraphErrorBody = { error?: { message?: string; code?: string } };
@@ -38,14 +60,6 @@ function graphClientId(): string {
 
 function graphSecret(): string {
   return readEnv("AZURE_GRAPH_CLIENT_SECRET", "AZURE_PROVISIONING_CLIENT_SECRET");
-}
-
-function apiAppId(): string {
-  return readEnv("AZURE_API_CLIENT_ID", "VITE_AZURE_API_CLIENT_ID");
-}
-
-function spaAppId(): string {
-  return readEnv("AZURE_CLIENT_ID", "VITE_AZURE_CLIENT_ID");
 }
 
 export function graphConfigured(): boolean {
@@ -118,6 +132,44 @@ async function graphList<T>(path: string): Promise<T[]> {
   return items;
 }
 
+export function isPayflowNamedAssignment(assignment: GraphAppRoleAssignment): boolean {
+  const appRoleId = (assignment.appRoleId ?? "").toLowerCase();
+  if (!appRoleId || appRoleId === DEFAULT_ASSIGNMENT_ROLE_ID) return false;
+  const resource = assignment.resourceDisplayName ?? "";
+  if (SKIP_RESOURCES.has(resource)) return false;
+  return resource === PAYFLOW_RESOURCE;
+}
+
+export function envAppRoleCatalog(): Map<string, PayflowEntraRole> {
+  const catalog = new Map<string, PayflowEntraRole>();
+  for (const [id, role] of Object.entries(FALLBACK_PAYFLOW_APPROLE_IDS)) {
+    catalog.set(id.toLowerCase(), role);
+  }
+  const overrides: Array<[string, PayflowEntraRole]> = [
+    ["AZURE_PAYFLOW_ROLE_ADMIN_ID", "PAYFLOW_ADMIN"],
+    ["AZURE_PAYFLOW_ROLE_HR_ID", "PAYFLOW_HR"],
+    ["AZURE_PAYFLOW_ROLE_EMPLOYEE_ID", "PAYFLOW_EMPLOYEE"],
+  ];
+  for (const [name, role] of overrides) {
+    const id = readEnv(name).toLowerCase();
+    if (id) catalog.set(id, role);
+  }
+  return catalog;
+}
+
+export function payflowRolesFromAssignments(
+  assignments: GraphAppRoleAssignment[] | undefined,
+  catalog: Map<string, PayflowEntraRole>,
+): PayflowEntraRole[] {
+  const roles = new Set<PayflowEntraRole>();
+  for (const assignment of assignments ?? []) {
+    if (!isPayflowNamedAssignment(assignment)) continue;
+    const role = catalog.get((assignment.appRoleId ?? "").toLowerCase());
+    if (role) roles.add(role);
+  }
+  return PAYFLOW_ROLES.filter((role) => roles.has(role));
+}
+
 type ServicePrincipal = {
   id: string;
   appId: string;
@@ -125,56 +177,31 @@ type ServicePrincipal = {
   appRoles?: { id: string; value?: string; isEnabled?: boolean }[];
 };
 
-type AppRoleAssignment = {
-  principalId: string;
-  principalDisplayName?: string;
-  principalType?: string;
-  appRoleId: string;
-};
-
-type GraphUser = {
+type GraphDirectoryUser = {
   id: string;
   displayName?: string;
   userPrincipalName?: string;
   mail?: string | null;
   accountEnabled?: boolean;
+  appRoleAssignments?: GraphAppRoleAssignment[];
 };
 
-async function servicePrincipalByAppId(appId: string): Promise<ServicePrincipal | null> {
-  if (!appId) return null;
-  const rows = await graphList<ServicePrincipal>(`/servicePrincipals?$filter=appId eq '${appId}'&$select=id,appId,displayName,appRoles`);
-  return rows[0] ?? null;
-}
-
-function roleValue(appRoles: ServicePrincipal["appRoles"], appRoleId: string): PayflowEntraRole | null {
-  const value = appRoles?.find((role) => role.id === appRoleId)?.value;
-  if (value === "PAYFLOW_ADMIN" || value === "PAYFLOW_HR" || value === "PAYFLOW_EMPLOYEE") return value;
-  return null;
-}
-
-async function assignmentsForApp(appId: string): Promise<{ oid: string; roles: PayflowEntraRole[]; displayName?: string }[]> {
-  const sp = await servicePrincipalByAppId(appId);
-  if (!sp) return [];
-  const assignments = await graphList<AppRoleAssignment>(`/servicePrincipals/${sp.id}/appRoleAssignedTo`);
-  const byOid = new Map<string, { roles: Set<PayflowEntraRole>; displayName?: string }>();
-  for (const assignment of assignments) {
-    if (assignment.principalType && assignment.principalType !== "User") continue;
-    const role = roleValue(sp.appRoles, assignment.appRoleId);
-    if (!role) continue;
-    const current = byOid.get(assignment.principalId) ?? { roles: new Set<PayflowEntraRole>(), displayName: assignment.principalDisplayName };
-    current.roles.add(role);
-    current.displayName = current.displayName || assignment.principalDisplayName;
-    byOid.set(assignment.principalId, current);
+async function enrichCatalogFromServicePrincipals(
+  resourceIds: string[],
+  catalog: Map<string, PayflowEntraRole>,
+): Promise<void> {
+  for (const id of resourceIds) {
+    const result = await graph<ServicePrincipal & GraphErrorBody>(
+      `/servicePrincipals/${id}?$select=id,appId,displayName,appRoles`,
+    );
+    if (!result.ok) continue;
+    for (const role of result.data.appRoles ?? []) {
+      const value = role.value;
+      if (value === "PAYFLOW_ADMIN" || value === "PAYFLOW_HR" || value === "PAYFLOW_EMPLOYEE") {
+        catalog.set(role.id.toLowerCase(), value);
+      }
+    }
   }
-  return [...byOid.entries()].map(([oid, value]) => ({ oid, roles: [...value.roles], displayName: value.displayName }));
-}
-
-async function loadGraphUser(oid: string): Promise<GraphUser | null> {
-  const result = await graph<GraphUser & GraphErrorBody>(
-    `/users/${oid}?$select=id,displayName,userPrincipalName,mail,accountEnabled`,
-  );
-  if (!result.ok) return null;
-  return result.data;
 }
 
 export function visibleEntraUsers(users: EntraDirectoryUser[], role: "admin" | "hr" | "employee"): EntraDirectoryUser[] {
@@ -216,34 +243,35 @@ export async function listPayflowEntraUsers(): Promise<EntraDirectoryUser[]> {
     return userCache.users;
   }
 
-  const assigned = new Map<string, Set<PayflowEntraRole>>();
-  for (const appId of [apiAppId(), spaAppId()]) {
-    const rows = await assignmentsForApp(appId);
-    for (const row of rows) {
-      const current = assigned.get(row.oid) ?? new Set<PayflowEntraRole>();
-      row.roles.forEach((role) => current.add(role));
-      assigned.set(row.oid, current);
-    }
-  }
+  const directory = await graphList<GraphDirectoryUser>(
+    "/users?$select=id,displayName,userPrincipalName,mail,accountEnabled&$expand=appRoleAssignments",
+  );
+
+  const catalog = envAppRoleCatalog();
+  const resourceIds = [
+    ...new Set(
+      directory.flatMap((user) =>
+        (user.appRoleAssignments ?? [])
+          .filter(isPayflowNamedAssignment)
+          .map((assignment) => assignment.resourceId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ),
+  ];
+  await enrichCatalogFromServicePrincipals(resourceIds, catalog);
 
   const users: Omit<EntraDirectoryUser, "linkedEmployeeId" | "linkedEmployeeName">[] = [];
-  const oids = [...assigned.keys()];
-  const chunk = 6;
-  for (let index = 0; index < oids.length; index += chunk) {
-    const slice = oids.slice(index, index + chunk);
-    const profiles = await Promise.all(slice.map((oid) => loadGraphUser(oid)));
-    profiles.forEach((profile, offset) => {
-      const oid = slice[offset];
-      const roles = [...(assigned.get(oid) ?? [])];
-      if (!profile || roles.length === 0) return;
-      users.push({
-        id: profile.id,
-        displayName: profile.displayName || profile.userPrincipalName || profile.mail || oid,
-        userPrincipalName: profile.userPrincipalName || profile.mail || "",
-        mail: profile.mail ?? null,
-        accountEnabled: profile.accountEnabled !== false,
-        roles,
-      });
+  for (const profile of directory) {
+    const roles = payflowRolesFromAssignments(profile.appRoleAssignments, catalog);
+    if (roles.length === 0) continue;
+    const upn = profile.userPrincipalName || profile.mail || "";
+    users.push({
+      id: profile.id,
+      displayName: profile.displayName || upn || profile.id,
+      userPrincipalName: upn,
+      mail: profile.mail ?? null,
+      accountEnabled: profile.accountEnabled !== false,
+      roles,
     });
   }
 

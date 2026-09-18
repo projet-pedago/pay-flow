@@ -19,7 +19,7 @@ entraRouter.get("/users", async (req, res) => {
   if (!graphConfigured()) {
     res.status(503).json({
       error:
-        "Microsoft Graph n’est pas configuré. Renseignez AZURE_GRAPH_CLIENT_ID et AZURE_GRAPH_CLIENT_SECRET (PayFlow-Provisioning, lecture seule : User.Read.All et AppRoleAssignment.Read.All).",
+        "Microsoft Graph n’est pas configuré. Renseignez AZURE_GRAPH_CLIENT_ID et AZURE_GRAPH_CLIENT_SECRET (PayFlow-Provisioning, lecture seule : User.Read.All).",
     });
     return;
   }

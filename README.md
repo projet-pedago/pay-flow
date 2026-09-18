@@ -208,6 +208,9 @@ AZURE_TENANT_ID=
 AZURE_API_CLIENT_ID=
 AZURE_GRAPH_CLIENT_ID=
 AZURE_GRAPH_CLIENT_SECRET=
+AZURE_PAYFLOW_ROLE_ADMIN_ID=
+AZURE_PAYFLOW_ROLE_HR_ID=
+AZURE_PAYFLOW_ROLE_EMPLOYEE_ID=
 ```
 
 Dans Entra ID → App registrations → **PayFlow-Frontend** → Authentication → Single-page application, ajoutez :
@@ -225,7 +228,7 @@ Les comptes de connexion se créent **uniquement dans Microsoft Entra ID**. `GET
 | RH | PAYFLOW_EMPLOYEE uniquement |
 | EMPLOYEE | 403 — aucune liste |
 
-Permissions Graph minimales : `User.Read.All`, `AppRoleAssignment.Read.All`, `Application.Read.All` (ou `Directory.Read.All`). Aucune écriture Entra.
+Permission Graph minimale : `User.Read.All` (liste des utilisateurs et de leurs `appRoleAssignments`). `Application.Read.All` (ou `Directory.Read.All`) est optionnelle : sans elle, PayFlow associe les GUID de rôles connus (`AZURE_PAYFLOW_ROLE_*_ID` ou valeurs intégrées). Aucune écriture Entra. Seule l’application entreprise **PayFlow** compte ; **PayFlow-Frontend** et **PayFlow-Provisioning** sont ignorées.
 
 `POST /api/employees` crée une fiche RH, pas un compte. Les rôles `PAYFLOW_ADMIN`, `PAYFLOW_HR` et `PAYFLOW_EMPLOYEE` ouvrent respectivement `/admin`, `/rh` et `/espace`.
 
