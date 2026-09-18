@@ -52,7 +52,9 @@ export function AssistantDock() {
   const seeds =
     user.role === "admin"
       ? ["Masse salariale du dernier cycle ?", "Quels contrats expirent ?", "Simule une prime de 400 € pour Yao Lassidan"]
-      : ["Combien de congés me reste-t-il ?", "Comment est calculé mon salaire ?", "Simule une augmentation de 5 %"];
+      : user.role === "hr"
+        ? ["Quels contrats expirent ?", "Quelles absences sont en attente ?", "Simule une prime de 400 € pour Yao Lassidan"]
+        : ["Combien de congés me reste-t-il ?", "Comment est calculé mon salaire ?", "Simule une augmentation de 5 %"];
 
   return (
     <>

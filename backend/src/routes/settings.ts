@@ -1,17 +1,16 @@
 import { Router } from "express";
 import { z } from "zod";
-import { requireAdmin } from "../auth.js";
+import { requireAdmin, requireStaff } from "../auth.js";
 import { loadStore, mutate, resetStore } from "../lib/store.js";
 
 export const settingsRouter = Router();
-settingsRouter.use(requireAdmin);
 
-settingsRouter.get("/", (_req, res) => {
+settingsRouter.get("/", requireStaff, (_req, res) => {
   const store = loadStore();
   res.json({ settings: store.settings, rates: store.rates });
 });
 
-settingsRouter.put("/", (req, res) => {
+settingsRouter.put("/", requireAdmin, (req, res) => {
   const parsed = z
     .object({
       companyName: z.string().min(1).optional(),
@@ -58,7 +57,7 @@ settingsRouter.put("/", (req, res) => {
   res.json(updated);
 });
 
-settingsRouter.post("/reset", (_req, res) => {
+settingsRouter.post("/reset", requireAdmin, (_req, res) => {
   const restored = resetStore();
   res.json({ ok: true, employees: restored.employees.length, periods: restored.periods.length });
 });

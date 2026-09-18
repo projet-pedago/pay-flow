@@ -43,8 +43,6 @@ export type Employee = {
   mealTicket1650: number;
   contractEndDate?: string;
   entraObjectId?: string;
-  entraProvisioningStatus?: "pending" | "provisioned" | "failed" | "skipped";
-  entraProvisioningError?: string;
 };
 
 export type EmployeeDraft = Omit<Employee, "id">;

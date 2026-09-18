@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { requireAdmin } from "../auth.js";
+import { requireStaff } from "../auth.js";
 import { id, loadStore, mutate } from "../lib/store.js";
 
 const schema = z.object({
@@ -11,7 +11,7 @@ const schema = z.object({
 });
 
 export const departmentsRouter = Router();
-departmentsRouter.use(requireAdmin);
+departmentsRouter.use(requireStaff);
 
 departmentsRouter.get("/", (_req, res) => {
   res.json(loadStore().departments);

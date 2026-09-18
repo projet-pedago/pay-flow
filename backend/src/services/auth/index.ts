@@ -98,21 +98,20 @@ createService("payrollflow-auth", port, (app) => {
         return;
       }
 
-      let role: "admin" | "employee";
+      let role: "admin" | "hr" | "employee";
       switch (entraRole) {
         case "PAYFLOW_ADMIN":
           role = "admin";
           break;
         case "PAYFLOW_HR":
-          // L’app interne n’a pas encore de rôle HR distinct.
-          role = "admin";
+          role = "hr";
           break;
         case "PAYFLOW_EMPLOYEE":
           role = "employee";
           break;
         default:
           recordLoginFailure(req);
-          res.status(403).json({ error: "Rôle Microsoft PayFlow non autorisé." });
+          res.status(403).json({ error: "Rôle PayFlow non autorisé." });
           return;
       }
 

@@ -221,7 +221,7 @@ Dans Entra ID → App registrations → **PayFlow-Frontend** → Authentication 
 
 L’application API doit exposer le périmètre `access_as_user` et les rôles applicatifs `PAYFLOW_ADMIN`, `PAYFLOW_HR`, `PAYFLOW_EMPLOYEE`. Le bouton **Se connecter avec Microsoft** demande `openid`, `profile` et `api://{VITE_AZURE_API_CLIENT_ID}/access_as_user`. Un compte Entra authentifié **sans** rôle PayFlow reçoit HTTP 403. L’absence d’une fiche dans `store.users` n’empêche plus la connexion. Un salarié est rattaché à sa fiche RH via `employees[].entraObjectId` (oid Entra) ; à la première connexion, un email identique à la fiche enregistre automatiquement l’oid.
 
-La création RH (`POST /api/employees`) provisionne le compte via **PayFlow-Provisioning** (Microsoft Graph, credentials `AZURE_PROVISIONING_*` côté backend uniquement). En cas d’échec Graph, la fiche RH est conservée avec `entraProvisioningStatus=failed` et peut être relancée par `POST /api/employees/:id/entra-provision`.
+Les comptes de connexion se créent **uniquement dans Microsoft Entra ID**. `POST /api/employees` crée une fiche RH, pas un compte. Les rôles applicatifs `PAYFLOW_ADMIN`, `PAYFLOW_HR` et `PAYFLOW_EMPLOYEE` ouvrent respectivement `/admin`, `/rh` et `/espace`.
 
 Si une erreur **AADSTS…** apparaît après le redémarrage, le code complet indique la prochaine correction (URI de redirection, consentement, audience).
 

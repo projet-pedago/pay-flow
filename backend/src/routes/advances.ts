@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
-import { getUser, requireAdmin, requireAuth } from "../auth.js";
+import { getUser, requireStaff, requireAuth } from "../auth.js";
+import { isStaff } from "../lib/roles.js";
 import { advanceQuota } from "../lib/advance-cap.js";
 import { notifyAdmins, notifyEmployee } from "../lib/notify.js";
 import { id, loadStore, mutate } from "../lib/store.js";
@@ -22,7 +23,7 @@ advancesRouter.get("/", (req, res) => {
   const user = getUser(req);
   const store = loadStore();
   const items =
-    user.role === "admin" ? store.advances : store.advances.filter((item) => item.employeeId === user.employeeId);
+    isStaff(user.role) ? store.advances : store.advances.filter((item) => item.employeeId === user.employeeId);
   res.json(
     [...items]
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
@@ -80,7 +81,7 @@ advancesRouter.post("/", (req, res) => {
   res.status(201).json(created.advance);
 });
 
-advancesRouter.post("/:id/decide", requireAdmin, (req, res) => {
+advancesRouter.post("/:id/decide", requireStaff, (req, res) => {
   const parsed = z.object({ status: z.enum(["approved", "rejected"]) }).safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Décision invalide" });

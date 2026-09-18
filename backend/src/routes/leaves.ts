@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
-import { getUser, requireAdmin, requireAuth } from "../auth.js";
+import { getUser, requireStaff, requireAuth } from "../auth.js";
+import { isStaff } from "../lib/roles.js";
 import { pushAudit } from "../lib/audit.js";
 import { countWeekdays, LEAVE_LABELS } from "../lib/dates.js";
 import { leaveBalancesFor, leaveRemaining } from "../lib/leave-balance.js";
@@ -14,7 +15,7 @@ leavesRouter.get("/", (req, res) => {
   const user = getUser(req);
   const store = loadStore();
   const leaves =
-    user.role === "admin" ? store.leaves : store.leaves.filter((item) => item.employeeId === user.employeeId);
+    isStaff(user.role) ? store.leaves : store.leaves.filter((item) => item.employeeId === user.employeeId);
   const decorated = [...leaves]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .map((leave) => {
@@ -22,7 +23,7 @@ leavesRouter.get("/", (req, res) => {
       return { ...leave, employeeName: employee ? `${employee.firstName} ${employee.lastName}` : leave.employeeId };
     });
   const balances = store.employees
-    .filter((employee) => (user.role === "admin" ? true : employee.id === user.employeeId))
+    .filter((employee) => (isStaff(user.role) ? true : employee.id === user.employeeId))
     .map((employee) => ({
       employeeId: employee.id,
       name: `${employee.firstName} ${employee.lastName}`,
@@ -46,7 +47,7 @@ leavesRouter.post("/", (req, res) => {
     res.status(400).json({ error: "Demande incomplète" });
     return;
   }
-  const employeeId = user.role === "admin" ? parsed.data.employeeId ?? user.employeeId : user.employeeId;
+  const employeeId = isStaff(user.role) ? parsed.data.employeeId ?? user.employeeId : user.employeeId;
   if (!employeeId) {
     res.status(400).json({ error: "Employé manquant" });
     return;
@@ -90,7 +91,7 @@ leavesRouter.post("/", (req, res) => {
   res.status(201).json(created.leave);
 });
 
-leavesRouter.post("/:id/decide", requireAdmin, (req, res) => {
+leavesRouter.post("/:id/decide", requireStaff, (req, res) => {
   const parsed = z.object({ status: z.enum(["approved", "rejected"]) }).safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Décision invalide" });

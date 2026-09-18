@@ -11,7 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { initials, money } from "@/lib/format";
+import { staffBase } from "@/lib/roles";
 import type { Civility, ContractType, Department, Employee, EmployeeDraft, EmployeeStatus, Settings } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
 
@@ -46,6 +48,8 @@ const emptyForm = {
 };
 
 export function EmployeesPage() {
+  const { user } = useAuth();
+  const base = staffBase(user?.role === "hr" ? "hr" : "admin");
   const employees = useApi<Employee[]>("/api/employees");
   const departments = useApi<Department[]>("/api/departments");
   const settings = useApi<{ settings: Settings }>("/api/settings");
@@ -78,13 +82,7 @@ export function EmployeesPage() {
     setSaving(true);
     try {
       const created = await api<Employee>("/api/employees", { method: "POST", body: JSON.stringify(form) });
-      if (created.entraProvisioningStatus === "provisioned") {
-        toast.success("Collaborateur créé et compte Microsoft provisionné");
-      } else if (created.entraProvisioningStatus === "failed") {
-        toast.error(created.entraProvisioningError ?? "Fiche créée, mais le compte Microsoft n’a pas pu être provisionné");
-      } else {
-        toast.success("Employé créé");
-      }
+      toast.success(`Fiche RH créée pour ${created.firstName} ${created.lastName}. Le compte se crée dans Microsoft Entra ID.`);
       setOpen(false);
       setForm(emptyForm);
       await employees.reload();
@@ -234,7 +232,7 @@ export function EmployeesPage() {
           filtered.map((employee) => (
             <Link
               key={employee.id}
-              to={`/admin/employes/${employee.id}`}
+              to={`${base}/employes/${employee.id}`}
               className="grid gap-2 border-b border-ink/6 px-5 py-4 transition last:border-b-0 hover:bg-paper/70 md:grid-cols-[2fr_1.2fr_1fr_1fr_auto] md:items-center"
             >
               <div className="flex items-center gap-3">

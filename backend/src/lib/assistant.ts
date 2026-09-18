@@ -3,6 +3,16 @@ import { buildCalcSteps } from "./calc-steps.js";
 import { leaveBalancesFor } from "./leave-balance.js";
 import { LEAVE_LABELS } from "./dates.js";
 import { calculatePayslip } from "./payroll.js";
+import { isStaff } from "./roles.js";
+
+function consoleLink(role: Role, adminPath: string, employeePath: string) {
+  if (role === "admin") return adminPath;
+  if (role === "hr") {
+    if (adminPath.startsWith("/admin/calcul") || adminPath.startsWith("/admin/bulletins")) return "/rh/employes";
+    return adminPath.replace(/^\/admin/, "/rh");
+  }
+  return employeePath;
+}
 
 function money(value: number) {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", minimumFractionDigits: 2 }).format(value);
@@ -79,7 +89,7 @@ export const ASSISTANT_SUGGESTIONS_ADMIN = [
 export function answerAssistant(store: Store, user: { role: Role; employeeId?: string }, question: string) {
   const q = fold(question);
   const employee = resolveEmployee(store, user, question);
-  const suggestions = user.role === "admin" ? ASSISTANT_SUGGESTIONS_ADMIN : ASSISTANT_SUGGESTIONS_EMPLOYEE;
+  const suggestions = isStaff(user.role) ? ASSISTANT_SUGGESTIONS_ADMIN : ASSISTANT_SUGGESTIONS_EMPLOYEE;
 
   const raiseMatch = q.match(/augmentation[^0-9]{0,12}(\d+[.,]?\d*)\s*%/) ?? q.match(/(\d+[.,]?\d*)\s*%/);
   const bonusMatch = q.match(/prime[^0-9]{0,12}(\d+[.,]?\d*)/) ?? q.match(/bonus[^0-9]{0,12}(\d+[.,]?\d*)/);
@@ -101,7 +111,7 @@ export function answerAssistant(store: Store, user: { role: Role; employeeId?: s
         "Le brut monte, les charges aussi : le net n’augmente pas du même montant que la prime ou la hausse.",
       ].join("\n"),
       citations: [
-        { title: "Moteur de paie (simulation)", link: user.role === "admin" ? "/admin/calcul" : "/espace/bulletins" },
+        { title: "Moteur de paie (simulation)", link: consoleLink(user.role, "/admin/calcul", "/espace/bulletins") },
       ],
       suggestions,
     };
@@ -122,7 +132,7 @@ export function answerAssistant(store: Store, user: { role: Role; employeeId?: s
     lines.push("Maladie et sans solde ne consomment pas le solde CP/RTT. Un congé validé réduit les jours travaillés du cycle de paie.");
     return {
       answer: lines.join("\n"),
-      citations: [{ title: "Congés", link: user.role === "admin" ? "/admin/conges" : "/espace/conges" }],
+      citations: [{ title: "Congés", link: consoleLink(user.role, "/admin/conges", "/espace/conges") }],
       suggestions,
     };
   }
@@ -158,7 +168,7 @@ export function answerAssistant(store: Store, user: { role: Role; employeeId?: s
       citations: [
         {
           title: "Ouvrir le bulletin",
-          link: user.role === "admin" ? `/admin/bulletins/${slip.id}` : `/espace/bulletins/${slip.id}`,
+          link: consoleLink(user.role, `/admin/bulletins/${slip.id}`, `/espace/bulletins/${slip.id}`),
         },
       ],
       suggestions,
@@ -175,13 +185,13 @@ export function answerAssistant(store: Store, user: { role: Role; employeeId?: s
         `Brut ${money(slip.gross)} − cotisations salariales ${money(slip.employeeCharges)} + indemnités − acompte − PAS = net ${money(slip.net)}.`,
         `L’entreprise, elle, paie aussi les charges patronales : coût ${money(slip.employerCost)}.`,
       ].join("\n"),
-      citations: [{ title: "Calcul pas à pas", link: user.role === "admin" ? "/admin/calcul" : "/espace/bulletins" }],
+      citations: [{ title: "Calcul pas à pas", link: consoleLink(user.role, "/admin/calcul", "/espace/bulletins") }],
       suggestions,
     };
   }
 
   if (/contrat|cdd|cdi|stage|alternance|echeance|expir/.test(q)) {
-    if (user.role !== "admin" && employee) {
+    if (!isStaff(user.role) && employee) {
       return {
         answer: [
           `Contrat ${employee.contractType} depuis le ${employee.hireDate}.`,
@@ -206,13 +216,13 @@ export function answerAssistant(store: Store, user: { role: Role; employeeId?: s
       : ["Aucun contrat n’expire dans les 90 prochains jours."];
     return {
       answer: `Suivi des échéances (CDD, stage, alternance) :\n${lines.join("\n")}`,
-      citations: [{ title: "Employés", link: "/admin/employes" }],
+      citations: [{ title: "Employés", link: consoleLink(user.role, "/admin/employes", "/espace/profil") }],
       suggestions,
     };
   }
 
   if (/attestation|certificat/.test(q)) {
-    const link = user.role === "admin" ? "/admin/dossiers" : "/espace/dossier";
+    const link = consoleLink(user.role, "/admin/dossiers", "/espace/dossier");
     return {
       answer:
         "Vous pouvez générer une attestation de travail ou un certificat de salaire depuis le dossier RH : document officiel à imprimer / PDF, avec le dernier net si un bulletin existe.",
@@ -247,7 +257,7 @@ export function answerAssistant(store: Store, user: { role: Role; employeeId?: s
     return {
       answer:
         "Un acompte se demande dans l’espace collaborateur. Le RH valide ; il est plafonné à 30 % du dernier net et déduit du bulletin du mois.",
-      citations: [{ title: "Acomptes", link: user.role === "admin" ? "/admin/acomptes" : "/espace/acomptes" }],
+      citations: [{ title: "Acomptes", link: consoleLink(user.role, "/admin/acomptes", "/espace/acomptes") }],
       suggestions,
     };
   }
@@ -255,9 +265,9 @@ export function answerAssistant(store: Store, user: { role: Role; employeeId?: s
   return {
     answer: [
       "Je suis l’assistant RH de PayRollFlow. Je m’appuie sur vos données réelles (soldes, bulletins, contrats) — pas sur une invention.",
-      user.role === "admin"
-        ? "Exemples : masse salariale, contrats qui expirent, simulation d’une prime, explication d’une ligne de bulletin (citez le salarié)."
-        : "Exemples : solde de congés, lecture de votre fiche de paie, simulation d’une augmentation.",
+      user.role === "employee"
+        ? "Exemples : solde de congés, lecture de votre fiche de paie, simulation d’une augmentation."
+        : "Exemples : contrats qui expirent, simulation d’une prime, explication d’une ligne de bulletin (citez le salarié).",
     ].join("\n"),
     citations: [],
     suggestions,

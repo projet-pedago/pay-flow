@@ -19,7 +19,7 @@ export function pushNotification(
 }
 
 export function notifyAdmins(store: Store, input: { title: string; body: string; link: string }): void {
-  store.users.filter((user) => user.role === "admin").forEach((user) => {
+  store.users.filter((user) => user.role === "admin" || user.role === "hr").forEach((user) => {
     pushNotification(store, { ...input, userId: user.id });
   });
 }

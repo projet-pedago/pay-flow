@@ -6,20 +6,24 @@ import { EmployeeBadge, PeriodBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { money, monthLabel } from "@/lib/format";
+import { staffBase } from "@/lib/roles";
 import type { Department, Employee, PayrollPeriod, Payslip, Settings } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
 import { EmployeeForm } from "@/pages/employees";
 
 export function EmployeeDetailPage() {
   const { id } = useParams();
+  const { user } = useAuth();
+  const base = staffBase(user?.role === "hr" ? "hr" : "admin");
+  const isAdmin = user?.role === "admin";
   const employeeQuery = useApi<Employee>(id ? `/api/employees/${id}` : null);
   const departments = useApi<Department[]>("/api/departments");
   const settings = useApi<{ settings: Settings }>("/api/settings");
-  const slipsQuery = useApi<Payslip[]>(id ? `/api/payroll/employee/${id}/payslips` : null);
-  const periods = useApi<PayrollPeriod[]>("/api/payroll/periods");
+  const slipsQuery = useApi<Payslip[]>(isAdmin && id ? `/api/payroll/employee/${id}/payslips` : null);
+  const periods = useApi<PayrollPeriod[]>(isAdmin ? "/api/payroll/periods" : null);
   const [saving, setSaving] = useState(false);
-  const [provisioning, setProvisioning] = useState(false);
   const [draft, setDraft] = useState<Employee | null>(null);
 
   if (employeeQuery.loading) return <LoadingState />;
@@ -53,7 +57,7 @@ export function EmployeeDetailPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Link to="/admin/employes" className="text-sm text-sage hover:underline">
+          <Link to={`${base === "/rh" ? "/rh" : `${base}/employes`}`} className="text-sm text-sage hover:underline">
             ← Tous les employés
           </Link>
           <h2 className="font-display mt-2 text-3xl">
@@ -64,46 +68,12 @@ export function EmployeeDetailPage() {
             <span className="text-sm text-ink/55">{employee.jobTitle}</span>
           </div>
           <p className="mt-2 text-sm text-ink/55">
-            Microsoft Entra :{" "}
-            {employee.entraProvisioningStatus === "provisioned"
-              ? `compte lié (${employee.entraObjectId ?? "oid"})`
-              : employee.entraProvisioningStatus === "failed"
-                ? `échec — ${employee.entraProvisioningError ?? "réessayer"}`
-                : employee.entraProvisioningStatus === "pending"
-                  ? "provisionnement en cours"
-                  : employee.entraProvisioningStatus === "skipped"
-                    ? "Graph non configuré"
-                    : "non provisionné"}
+            Compte Microsoft : {employee.entraObjectId ? `lié (${employee.entraObjectId})` : "à rattacher à la première connexion Entra"}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {employee.entraProvisioningStatus !== "provisioned" ? (
-            <Button
-              variant="outline"
-              disabled={provisioning}
-              onClick={async () => {
-                if (!id) return;
-                setProvisioning(true);
-                try {
-                  const updated = await api<Employee>(`/api/employees/${id}/entra-provision`, { method: "POST" });
-                  setDraft(updated);
-                  toast.success("Compte Microsoft provisionné");
-                  await employeeQuery.reload();
-                } catch (err) {
-                  toast.error(err instanceof Error ? err.message : "Provisionnement Microsoft impossible");
-                  await employeeQuery.reload();
-                } finally {
-                  setProvisioning(false);
-                }
-              }}
-            >
-              {provisioning ? "Provisionnement…" : "Créer le compte Microsoft"}
-            </Button>
-          ) : null}
-          <Button onClick={() => void save()} disabled={saving}>
-            {saving ? "Sauvegarde…" : "Enregistrer le profil"}
-          </Button>
-        </div>
+        <Button onClick={() => void save()} disabled={saving}>
+          {saving ? "Sauvegarde…" : "Enregistrer le profil"}
+        </Button>
       </div>
 
       <Card>
@@ -119,17 +89,17 @@ export function EmployeeDetailPage() {
             saving={saving}
           />
           <div className="mt-4 flex flex-wrap gap-3 text-sm">
-            <Link to={`/admin/attestations/${employee.id}/travail`} className="text-sage underline">
+            <Link to={`${base}/attestations/${employee.id}/travail`} className="text-sage underline">
               Attestation de travail
             </Link>
-            <Link to={`/admin/attestations/${employee.id}/salaire`} className="text-sage underline">
+            <Link to={`${base}/attestations/${employee.id}/salaire`} className="text-sage underline">
               Certificat de salaire
             </Link>
           </div>
         </CardContent>
       </Card>
 
-      {(slipsQuery.data ?? []).length > 0 ? (
+      {isAdmin && (slipsQuery.data ?? []).length > 0 ? (
         <Card>
           <CardHeader>
             <h3 className="font-display text-xl">Bulletins</h3>

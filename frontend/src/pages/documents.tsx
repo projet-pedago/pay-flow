@@ -5,11 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { isStaff, staffBase } from "@/lib/roles";
 import type { DocumentPack } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
 
 export function DocumentsPage() {
   const { user } = useAuth();
+  const staff = isStaff(user?.role ?? "employee");
+  const base = staffBase(user?.role === "hr" ? "hr" : "admin");
   const query = useApi<DocumentPack[]>("/api/documents");
 
   if (query.loading) return <LoadingState />;
@@ -25,7 +28,7 @@ export function DocumentsPage() {
     <div className="space-y-6">
       <div>
         <h2 className="font-display text-3xl sm:text-4xl">
-          {user?.role === "admin" ? "Dossiers RH" : "Mon dossier"}
+          {staff ? "Dossiers RH" : "Mon dossier"}
         </h2>
         <p className="mt-2 max-w-2xl text-sm text-ink/60">
           Onboarding documentaire : CNI, RIB, contrat, carte Vitale. Les pièces manquantes bloquent un virement propre.
@@ -51,13 +54,13 @@ export function DocumentsPage() {
               ))}
               <div className="flex flex-wrap gap-2 pt-2">
                 <Link
-                  to={user?.role === "admin" ? `/admin/attestations/${pack.employeeId}/travail` : "/espace/attestations/travail"}
+                  to={staff ? `${base}/attestations/${pack.employeeId}/travail` : "/espace/attestations/travail"}
                   className="text-xs font-medium text-sage underline"
                 >
                   Attestation de travail
                 </Link>
                 <Link
-                  to={user?.role === "admin" ? `/admin/attestations/${pack.employeeId}/salaire` : "/espace/attestations/salaire"}
+                  to={staff ? `${base}/attestations/${pack.employeeId}/salaire` : "/espace/attestations/salaire"}
                   className="text-xs font-medium text-sage underline"
                 >
                   Certificat de salaire

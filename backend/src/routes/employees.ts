@@ -1,10 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
-import { DEMO_EMPLOYEE_PASSWORD } from "../auth-constants.js";
-import { hashPassword, requireAdmin } from "../auth.js";
+import { requireStaff } from "../auth.js";
 import { parseCsv } from "../lib/csv.js";
-import { provisionEmployeeLogin } from "../lib/provision-login.js";
-import { entraProvisioningConfigured, provisionPayFlowEmployee } from "../lib/entra-provision.js";
 import type { Employee } from "../types.js";
 import { id, loadStore, mutate } from "../lib/store.js";
 
@@ -60,12 +57,11 @@ function withLegalDefaults(
     mealTicket1650: data.mealTicket1650 ?? 0,
     contractEndDate: data.contractEndDate || undefined,
     entraObjectId: data.entraObjectId || undefined,
-    entraProvisioningStatus: "pending" as const,
   };
 }
 
 export const employeesRouter = Router();
-employeesRouter.use(requireAdmin);
+employeesRouter.use(requireStaff);
 
 employeesRouter.get("/export", (_req, res) => {
   const { employees, departments } = loadStore();
@@ -190,17 +186,8 @@ employeesRouter.post("/import", (req, res) => {
         mealTicket1650: 0,
       };
       store.employees.push(employee);
-      store.users.push({
-        id: id(),
-        email: employee.email,
-        passwordHash: hashPassword(DEMO_EMPLOYEE_PASSWORD),
-        role: "employee",
-        name: `${employee.firstName} ${employee.lastName}`,
-        employeeId: employee.id,
-      });
       added.push(employee);
       report.push({ line, status: "created", email: employee.email });
-      void provisionEmployeeLogin(employee.email, `${employee.firstName} ${employee.lastName}`);
     });
     return { added, report };
   });
@@ -222,37 +209,7 @@ employeesRouter.get("/:id", (req, res) => {
   res.json(employee);
 });
 
-async function persistEntraProvisioning(employeeId: string): Promise<Employee | null> {
-  const current = loadStore().employees.find((item) => item.id === employeeId);
-  if (!current) return null;
-
-  if (!entraProvisioningConfigured()) {
-    return mutate((store) => {
-      const item = store.employees.find((entry) => entry.id === employeeId);
-      if (!item) return null;
-      item.entraProvisioningStatus = "skipped";
-      item.entraProvisioningError = "Microsoft Graph n’est pas configuré.";
-      return item;
-    });
-  }
-
-  const result = await provisionPayFlowEmployee(current);
-  return mutate((store) => {
-    const item = store.employees.find((entry) => entry.id === employeeId);
-    if (!item) return null;
-    if (result.ok) {
-      item.entraObjectId = result.oid;
-      item.entraProvisioningStatus = "provisioned";
-      delete item.entraProvisioningError;
-    } else {
-      item.entraProvisioningStatus = "failed";
-      item.entraProvisioningError = result.error;
-    }
-    return item;
-  });
-}
-
-employeesRouter.post("/", async (req, res) => {
+employeesRouter.post("/", (req, res) => {
   const parsed = employeeSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Données invalides", details: parsed.error.flatten() });
@@ -266,24 +223,7 @@ employeesRouter.post("/", async (req, res) => {
     store.employees.push(created);
     return created;
   });
-  const provisioned = (await persistEntraProvisioning(employee.id)) ?? employee;
-  res.status(201).json(provisioned);
-});
-
-employeesRouter.post("/:id/entra-provision", async (req, res) => {
-  const updated = await persistEntraProvisioning(req.params.id);
-  if (!updated) {
-    res.status(404).json({ error: "Employé introuvable" });
-    return;
-  }
-  if (updated.entraProvisioningStatus === "failed") {
-    res.status(502).json({
-      ...updated,
-      error: updated.entraProvisioningError ?? "Provisionnement Entra impossible",
-    });
-    return;
-  }
-  res.json(updated);
+  res.status(201).json(employee);
 });
 
 employeesRouter.put("/:id", (req, res) => {
@@ -297,11 +237,7 @@ employeesRouter.put("/:id", (req, res) => {
     if (index < 0) return null;
     const patch = { ...parsed.data };
     if (patch.entraObjectId === "") delete patch.entraObjectId;
-    const { entraProvisioningStatus: _status, entraProvisioningError: _error, ...safePatch } = patch as typeof patch & {
-      entraProvisioningStatus?: Employee["entraProvisioningStatus"];
-      entraProvisioningError?: string;
-    };
-    store.employees[index] = { ...store.employees[index], ...safePatch };
+    store.employees[index] = { ...store.employees[index], ...patch };
     const user = store.users.find((item) => item.employeeId === req.params.id);
     if (user) {
       user.email = store.employees[index].email;

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { getUser, requireAuth } from "../auth.js";
+import { isStaff } from "../lib/roles.js";
 import { answerAssistant, ASSISTANT_SUGGESTIONS_ADMIN, ASSISTANT_SUGGESTIONS_EMPLOYEE } from "../lib/assistant.js";
 import { loadStore } from "../lib/store.js";
 
@@ -10,7 +11,7 @@ assistantRouter.use(requireAuth);
 assistantRouter.get("/suggestions", (req, res) => {
   const user = getUser(req);
   res.json({
-    suggestions: user.role === "admin" ? ASSISTANT_SUGGESTIONS_ADMIN : ASSISTANT_SUGGESTIONS_EMPLOYEE,
+    suggestions: isStaff(user.role) ? ASSISTANT_SUGGESTIONS_ADMIN : ASSISTANT_SUGGESTIONS_EMPLOYEE,
   });
 });
 

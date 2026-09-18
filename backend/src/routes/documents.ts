@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { getUser, requireAuth } from "../auth.js";
+import { isStaff } from "../lib/roles.js";
 import { loadStore, mutate } from "../lib/store.js";
 
 export const documentsRouter = Router();
@@ -9,11 +10,11 @@ documentsRouter.get("/", (req, res) => {
   const user = getUser(req);
   const store = loadStore();
   const documents =
-    user.role === "admin"
+    isStaff(user.role)
       ? store.documents
       : store.documents.filter((item) => item.employeeId === user.employeeId);
   const byEmployee = store.employees
-    .filter((employee) => (user.role === "admin" ? employee.status !== "terminated" : employee.id === user.employeeId))
+    .filter((employee) => (isStaff(user.role) ? employee.status !== "terminated" : employee.id === user.employeeId))
     .map((employee) => {
       const docs = documents.filter((item) => item.employeeId === employee.id);
       const missing = docs.filter((item) => item.status === "missing").length;
@@ -33,7 +34,7 @@ documentsRouter.post("/:id/toggle", (req, res) => {
   const updated = mutate((store) => {
     const doc = store.documents.find((item) => item.id === req.params.id);
     if (!doc) return null;
-    if (user.role !== "admin" && user.employeeId !== doc.employeeId) return { forbidden: true } as const;
+    if (!isStaff(user.role) && user.employeeId !== doc.employeeId) return { forbidden: true } as const;
     doc.status = doc.status === "provided" ? "missing" : "provided";
     doc.updatedAt = new Date().toISOString();
     return doc;

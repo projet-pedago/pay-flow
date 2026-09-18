@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { loginRequest } from "@/lib/msal";
+import { homePath } from "@/lib/roles";
 
 /** Après le retour Entra ID, échange le jeton Microsoft contre la session PayRollFlow. */
 export function MicrosoftSessionBridge() {
@@ -28,7 +29,7 @@ export function MicrosoftSessionBridge() {
           accessToken: result.accessToken,
           idToken: result.idToken || undefined,
         });
-        navigate(me.role === "admin" ? "/admin" : "/espace", { replace: true });
+        navigate(homePath(me.role), { replace: true });
       } catch (err) {
         once.current = false;
         toast.error(err instanceof Error ? err.message : "Connexion Microsoft impossible");

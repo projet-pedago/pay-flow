@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { isStaff } from "@/lib/roles";
 import { money } from "@/lib/format";
 import type { SalaryAdvance } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
@@ -30,15 +31,15 @@ type Quota = { ratio: number; reference: number; cap: number; used: number; rema
 
 export function AdvancesPage() {
   const { user } = useAuth();
-  const admin = user?.role === "admin";
+  const staff = isStaff(user?.role ?? "employee");
   const query = useApi<SalaryAdvance[]>("/api/advances");
-  const quota = useApi<Quota>(admin ? null : "/api/advances/quota");
+  const quota = useApi<Quota>(staff ? null : "/api/advances/quota");
   const now = new Date();
   const [amount, setAmount] = useState(300);
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
 
-  if (query.loading || (!admin && quota.loading)) return <LoadingState />;
+  if (query.loading || (!staff && quota.loading)) return <LoadingState />;
   if (query.error || !query.data) return <ErrorState message={query.error ?? "Erreur"} onRetry={query.reload} />;
 
   async function submit() {
@@ -72,13 +73,13 @@ export function AdvancesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-display text-3xl sm:text-4xl">{admin ? "Acomptes sur salaire" : "Mes acomptes"}</h2>
+        <h2 className="font-display text-3xl sm:text-4xl">{staff ? "Acomptes sur salaire" : "Mes acomptes"}</h2>
         <p className="mt-2 max-w-2xl text-sm text-ink/60">
           Un acompte validé est déduit automatiquement du bulletin du mois. Plafond : pourcentage du dernier net, configurable dans Paramètres.
         </p>
       </div>
 
-      {!admin ? (
+      {!staff ? (
         <Card>
           <CardContent>
             {quota.data ? (
@@ -130,7 +131,7 @@ export function AdvancesPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Badge className={statusStyle[advance.status]}>{statusLabel[advance.status] ?? advance.status}</Badge>
-                {admin && advance.status === "pending" ? (
+                {staff && advance.status === "pending" ? (
                   <>
                     <Button size="sm" onClick={() => void decide(advance.id, "approved")}>Valider</Button>
                     <Button size="sm" variant="outline" onClick={() => void decide(advance.id, "rejected")}>Refuser</Button>

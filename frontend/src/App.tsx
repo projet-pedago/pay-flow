@@ -36,6 +36,14 @@ function AdminShell({ children }: { children: ReactNode }) {
   );
 }
 
+function HrShell({ children }: { children: ReactNode }) {
+  return (
+    <RequireAuth role="hr">
+      <AdminLayout variant="hr">{children}</AdminLayout>
+    </RequireAuth>
+  );
+}
+
 function EmployeeShell({ children }: { children: ReactNode }) {
   return (
     <RequireAuth role="employee">
@@ -74,6 +82,15 @@ export default function App() {
           <Route path="/admin/dossiers" element={<AdminShell><DocumentsPage /></AdminShell>} />
           <Route path="/admin/attestations/:employeeId/:kind" element={<AdminShell><AttestationPage /></AdminShell>} />
           <Route path="/admin/parametres" element={<AdminShell><SettingsPage /></AdminShell>} />
+          <Route path="/rh" element={<HrShell><EmployeesPage /></HrShell>} />
+          <Route path="/rh/employes" element={<HrShell><EmployeesPage /></HrShell>} />
+          <Route path="/rh/employes/:id" element={<HrShell><EmployeeDetailPage /></HrShell>} />
+          <Route path="/rh/departements" element={<HrShell><DepartmentsPage /></HrShell>} />
+          <Route path="/rh/conges" element={<HrShell><LeavesPage /></HrShell>} />
+          <Route path="/rh/acomptes" element={<HrShell><AdvancesPage /></HrShell>} />
+          <Route path="/rh/dossiers" element={<HrShell><DocumentsPage /></HrShell>} />
+          <Route path="/rh/attestations/:employeeId/:kind" element={<HrShell><AttestationPage /></HrShell>} />
+          <Route path="/rh/assistant" element={<HrShell><AssistantPage /></HrShell>} />
           <Route path="/espace" element={<EmployeeShell><EmployeeHomePage /></EmployeeShell>} />
           <Route path="/espace/bulletins" element={<EmployeeShell><EmployeePayslipsPage /></EmployeeShell>} />
           <Route path="/espace/bulletins/:id" element={<EmployeeShell><PayslipPage /></EmployeeShell>} />

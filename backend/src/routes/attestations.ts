@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { getUser, requireAuth } from "../auth.js";
+import { isStaff } from "../lib/roles.js";
 import { loadStore } from "../lib/store.js";
 
 function monthLabelFr(year: number, month: number) {
@@ -16,7 +17,7 @@ attestationsRouter.get("/:employeeId/:kind", (req, res) => {
     return;
   }
   const user = getUser(req);
-  if (user.role !== "admin" && user.employeeId !== req.params.employeeId) {
+  if (!isStaff(user.role) && user.employeeId !== req.params.employeeId) {
     res.status(403).json({ error: "Cette attestation ne vous appartient pas" });
     return;
   }

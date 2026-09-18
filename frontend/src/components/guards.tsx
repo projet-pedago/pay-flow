@@ -1,13 +1,14 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { LoadingState } from "@/components/states";
 import { useAuth } from "@/lib/auth";
+import { homePath, type UserRole } from "@/lib/roles";
 import type { ReactNode } from "react";
 
 export function RequireAuth({
   role,
   children,
 }: {
-  role?: "admin" | "employee";
+  role?: UserRole | UserRole[];
   children: ReactNode;
 }) {
   const { user, loading } = useAuth();
@@ -15,8 +16,9 @@ export function RequireAuth({
 
   if (loading) return <LoadingState label="Vérification de la session…" />;
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
-  if (role && user.role !== role) {
-    return <Navigate to={user.role === "admin" ? "/admin" : "/espace"} replace />;
+  const allowed = role ? (Array.isArray(role) ? role : [role]) : null;
+  if (allowed && !allowed.includes(user.role)) {
+    return <Navigate to={homePath(user.role)} replace />;
   }
   return children;
 }
@@ -24,7 +26,7 @@ export function RequireAuth({
 export function GuestOnly({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <LoadingState />;
-  if (user) return <Navigate to={user.role === "admin" ? "/admin" : "/espace"} replace />;
+  if (user) return <Navigate to={homePath(user.role)} replace />;
   return children;
 }
 
@@ -32,5 +34,5 @@ export function HomeRedirect() {
   const { user, loading } = useAuth();
   if (loading) return <LoadingState />;
   if (!user) return <Navigate to="/login" replace />;
-  return <Navigate to={user.role === "admin" ? "/admin" : "/espace"} replace />;
+  return <Navigate to={homePath(user.role)} replace />;
 }

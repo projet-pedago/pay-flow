@@ -5,7 +5,7 @@ import { clearMsalSession } from "@/lib/msal";
 export type SessionUser = {
   id: string;
   email: string;
-  role: "admin" | "employee";
+  role: "admin" | "hr" | "employee";
   name: string;
   employeeId: string | null;
 };

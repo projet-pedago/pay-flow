@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { isStaff } from "@/lib/roles";
 import type { LeaveBalance, LeaveRequest, LeaveType } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
 
@@ -22,7 +23,7 @@ const statusStyle: Record<string, string> = {
 
 export function LeavesPage() {
   const { user } = useAuth();
-  const admin = user?.role === "admin";
+  const staff = isStaff(user?.role ?? "employee");
   const query = useApi<{ leaves: LeaveRequest[]; balances: LeaveBalance[]; labels: Record<string, string> }>("/api/leaves");
   const [type, setType] = useState<LeaveType>("cp");
   const [startDate, setStartDate] = useState("");
@@ -60,9 +61,9 @@ export function LeavesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-display text-3xl sm:text-4xl">{admin ? "Congés & absences" : "Mes absences"}</h2>
+        <h2 className="font-display text-3xl sm:text-4xl">{staff ? "Congés & absences" : "Mes absences"}</h2>
         <p className="mt-2 max-w-2xl text-sm text-ink/60">
-          {admin
+          {staff
             ? "Workflow de validation comme chez PayFit : le collaborateur pose, le RH décide, la paie récupère les jours."
             : "Posez un congé. Le solde se met à jour dès validation."}
         </p>
@@ -71,10 +72,10 @@ export function LeavesPage() {
       <LeaveCalendar leaves={query.data.leaves} />
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {(admin ? query.data.balances.slice(0, 4) : query.data.balances).map((balance) => (
+        {(staff ? query.data.balances.slice(0, 4) : query.data.balances).map((balance) => (
           <Card key={balance.employeeId}>
             <CardContent>
-              <p className="text-sm text-ink/50">{admin ? balance.name : "Vos soldes 2026"}</p>
+              <p className="text-sm text-ink/50">{staff ? balance.name : "Vos soldes 2026"}</p>
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
                   <p className="text-xs uppercase tracking-wide text-ink/40">CP</p>
@@ -92,7 +93,7 @@ export function LeavesPage() {
         ))}
       </div>
 
-      {!admin || user?.employeeId ? (
+      {!staff || user?.employeeId ? (
         <Card>
           <CardContent>
             <form
@@ -152,7 +153,7 @@ export function LeavesPage() {
             </div>
             <div className="flex items-center gap-2">
               <Badge className={statusStyle[leave.status]}>{leave.status}</Badge>
-              {admin && leave.status === "pending" ? (
+              {staff && leave.status === "pending" ? (
                 <>
                   <Button size="sm" onClick={() => void decide(leave.id, "approved")}>
                     Valider

@@ -21,7 +21,9 @@ export function AssistantPage() {
   const seeds =
     user?.role === "admin"
       ? ["Quelle est la masse salariale du dernier cycle ?", "Quels contrats arrivent à échéance ?", "Simule une prime de 400 € pour Yao Lassidan"]
-      : ["Combien de jours de congés me reste-t-il ?", "Comment est calculé mon salaire ?", "Explique la ligne CSG de ma fiche de paie"];
+      : user?.role === "hr"
+        ? ["Quels contrats arrivent à échéance ?", "Quelles absences sont en attente ?", "Simule une prime de 400 € pour Yao Lassidan"]
+        : ["Combien de jours de congés me reste-t-il ?", "Comment est calculé mon salaire ?", "Explique la ligne CSG de ma fiche de paie"];
 
   async function ask(text: string) {
     const trimmed = text.trim();

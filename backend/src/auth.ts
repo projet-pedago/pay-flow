@@ -4,6 +4,7 @@ import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "./lib/env.js";
 import { getSupabase } from "./lib/supabase.js";
+import { isStaff } from "./lib/roles.js";
 import type { Role } from "./types.js";
 
 export const AUTH_COOKIE = "payrollflow_token";
@@ -125,6 +126,16 @@ export async function requireAdmin(req: Request, res: Response, next: NextFuncti
   await requireAuth(req, res, () => {
     if (getUser(req).role !== "admin") {
       res.status(403).json({ error: "Accès administrateur requis" });
+      return;
+    }
+    next();
+  });
+}
+
+export async function requireStaff(req: Request, res: Response, next: NextFunction): Promise<void> {
+  await requireAuth(req, res, () => {
+    if (!isStaff(getUser(req).role)) {
+      res.status(403).json({ error: "Accès RH ou administrateur requis" });
       return;
     }
     next();
