@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "@/lib/api";
 import { clearMsalSession } from "@/lib/msal";
 
@@ -15,6 +15,7 @@ type AuthContextValue = {
   loading: boolean;
   login: (email: string, password: string) => Promise<SessionUser>;
   loginMicrosoft: (tokens: { accessToken: string; idToken?: string }) => Promise<SessionUser>;
+  refresh: () => Promise<SessionUser | null>;
   logout: () => void;
 };
 
@@ -24,34 +25,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const refresh = useCallback(async () => {
+    try {
+      const me = await api<SessionUser>("/api/auth/me");
+      setUser(me);
+      return me;
+    } catch {
+      setUser(null);
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
-    void api<SessionUser>("/api/auth/me")
-      .then((me) => {
-        if (!cancelled) setUser(me);
-      })
-      .catch(() => {
-        if (!cancelled) setUser(null);
-      })
+    void refresh()
+      .then(() => undefined)
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refresh]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
       loading,
+      refresh,
       async login(email, password) {
         await api("/api/auth/login", {
           method: "POST",
           body: JSON.stringify({ email, password }),
         });
-        const me = await api<SessionUser>("/api/auth/me");
-        setUser(me);
+        const me = await refresh();
+        if (!me) throw new Error("Session introuvable après connexion");
         return me;
       },
       async loginMicrosoft(tokens) {
@@ -59,8 +67,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           method: "POST",
           body: JSON.stringify(tokens),
         });
-        const me = await api<SessionUser>("/api/auth/me");
-        setUser(me);
+        const me = await refresh();
+        if (!me) throw new Error("Session introuvable après connexion Microsoft");
         return me;
       },
       logout() {
@@ -69,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         void clearMsalSession();
       },
     }),
-    [user, loading],
+    [user, loading, refresh],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

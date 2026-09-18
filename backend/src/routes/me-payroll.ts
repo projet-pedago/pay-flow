@@ -8,7 +8,7 @@ export const mePayrollRouter = Router();
 mePayrollRouter.get("/payslips", (req, res) => {
   const user = getUser(req);
   if (!user.employeeId) {
-    res.status(400).json({ error: "Ce compte n'est pas lié à une fiche employé" });
+    res.json([]);
     return;
   }
   const store = loadStore();

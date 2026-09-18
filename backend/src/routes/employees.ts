@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireStaff } from "../auth.js";
 import { parseCsv } from "../lib/csv.js";
+import { associateMicrosoftAccount, microsoftUpnTaken } from "../lib/entra-link.js";
 import type { Employee } from "../types.js";
 import { id, loadStore, mutate } from "../lib/store.js";
 
@@ -34,6 +35,7 @@ const employeeSchema = z.object({
   mealTicket1650: z.number().min(0).optional(),
   contractEndDate: z.string().optional().or(z.literal("")),
   entraObjectId: z.string().uuid().optional().or(z.literal("")),
+  entraUserPrincipalName: z.string().email().optional().or(z.literal("")),
 });
 
 function withLegalDefaults(
@@ -57,6 +59,7 @@ function withLegalDefaults(
     mealTicket1650: data.mealTicket1650 ?? 0,
     contractEndDate: data.contractEndDate || undefined,
     entraObjectId: data.entraObjectId || undefined,
+    entraUserPrincipalName: data.entraUserPrincipalName?.trim().toLowerCase() || undefined,
   };
 }
 
@@ -216,14 +219,41 @@ employeesRouter.post("/", (req, res) => {
     return;
   }
   const employee = mutate((store) => {
+    const defaults = withLegalDefaults(parsed.data, store);
+    if (defaults.entraUserPrincipalName) {
+      const taken = microsoftUpnTaken(store.employees, defaults.entraUserPrincipalName);
+      if (taken) return { conflict: `Ce compte Microsoft est déjà associé à ${taken.firstName} ${taken.lastName}.` };
+    }
     const created = {
       id: id(),
-      ...withLegalDefaults(parsed.data, store),
+      ...defaults,
     };
     store.employees.push(created);
-    return created;
+    return { employee: created };
   });
-  res.status(201).json(employee);
+  if ("conflict" in employee) {
+    res.status(409).json({ error: employee.conflict });
+    return;
+  }
+  res.status(201).json(employee.employee);
+});
+
+employeesRouter.put("/:id/microsoft-link", (req, res) => {
+  const parsed = z
+    .object({
+      entraUserPrincipalName: z.string(),
+    })
+    .safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "UPN Microsoft manquant" });
+    return;
+  }
+  const result = associateMicrosoftAccount(String(req.params.id), parsed.data.entraUserPrincipalName);
+  if ("error" in result) {
+    res.status(result.status).json({ error: result.error });
+    return;
+  }
+  res.json(result.employee);
 });
 
 employeesRouter.put("/:id", (req, res) => {
@@ -236,20 +266,40 @@ employeesRouter.put("/:id", (req, res) => {
     const index = store.employees.findIndex((item) => item.id === req.params.id);
     if (index < 0) return null;
     const patch = { ...parsed.data };
-    if (patch.entraObjectId === "") delete patch.entraObjectId;
+    if (patch.entraObjectId === "") {
+      delete patch.entraObjectId;
+      store.employees[index].entraObjectId = undefined;
+    }
+    if (patch.entraUserPrincipalName === "") {
+      delete patch.entraUserPrincipalName;
+      store.employees[index].entraUserPrincipalName = undefined;
+      store.employees[index].entraObjectId = undefined;
+    } else if (patch.entraUserPrincipalName) {
+      const upn = patch.entraUserPrincipalName.trim().toLowerCase();
+      const taken = microsoftUpnTaken(store.employees, upn, String(req.params.id));
+      if (taken) return { conflict: `Ce compte Microsoft est déjà associé à ${taken.firstName} ${taken.lastName}.` };
+      if (store.employees[index].entraUserPrincipalName?.toLowerCase() !== upn) {
+        store.employees[index].entraObjectId = undefined;
+      }
+      patch.entraUserPrincipalName = upn;
+    }
     store.employees[index] = { ...store.employees[index], ...patch };
     const user = store.users.find((item) => item.employeeId === req.params.id);
     if (user) {
       user.email = store.employees[index].email;
       user.name = `${store.employees[index].firstName} ${store.employees[index].lastName}`;
     }
-    return store.employees[index];
+    return { employee: store.employees[index] };
   });
   if (!updated) {
     res.status(404).json({ error: "Employé introuvable" });
     return;
   }
-  res.json(updated);
+  if ("conflict" in updated) {
+    res.status(409).json({ error: updated.conflict });
+    return;
+  }
+  res.json(updated.employee);
 });
 
 employeesRouter.delete("/:id", (req, res) => {

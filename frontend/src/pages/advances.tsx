@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { ErrorState, LoadingState } from "@/components/states";
+import { ErrorState, LoadingState, UnlinkedEmployeeState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,7 +27,16 @@ const statusLabel: Record<string, string> = {
   settled: "Soldé",
 };
 
-type Quota = { ratio: number; reference: number; cap: number; used: number; remaining: number; year: number; month: number };
+type Quota = {
+  linked?: boolean;
+  ratio: number;
+  reference: number;
+  cap: number;
+  used: number;
+  remaining: number;
+  year: number;
+  month: number;
+};
 
 export function AdvancesPage() {
   const { user } = useAuth();
@@ -41,6 +50,7 @@ export function AdvancesPage() {
 
   if (query.loading || (!staff && quota.loading)) return <LoadingState />;
   if (query.error || !query.data) return <ErrorState message={query.error ?? "Erreur"} onRetry={query.reload} />;
+  if (!staff && quota.data?.linked === false) return <UnlinkedEmployeeState />;
 
   async function submit() {
     setSaving(true);

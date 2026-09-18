@@ -1,12 +1,12 @@
 import { Link } from "react-router-dom";
-import { EmptyState, ErrorState, LoadingState } from "@/components/states";
+import { EmptyState, ErrorState, LoadingState, UnlinkedEmployeeState } from "@/components/states";
 import { PeriodBadge } from "@/components/status-badge";
 import { money, monthLabel } from "@/lib/format";
 import type { Department, Employee, PayrollPeriod, Payslip, Settings } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
 
 type Row = { payslip: Payslip; period?: PayrollPeriod };
-type Profile = { employee: Employee; department?: Department; settings: Settings };
+type Profile = { employee: Employee | null; department?: Department | null; settings: Settings };
 
 export function EmployeePayslipsPage() {
   const slips = useApi<Row[]>("/api/me/payslips");
@@ -14,6 +14,10 @@ export function EmployeePayslipsPage() {
 
   if (slips.loading) return <LoadingState />;
   if (slips.error) return <ErrorState message={slips.error} onRetry={slips.reload} />;
+
+  if (!profile.data?.employee) {
+    return <UnlinkedEmployeeState />;
+  }
 
   const currency = profile.data?.settings.currency ?? "EUR";
 

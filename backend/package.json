@@ -15,7 +15,8 @@
     "start:payroll": "tsx src/services/payroll/index.ts",
     "start:time": "tsx src/services/time/index.ts",
     "start:gateway": "tsx src/gateway/index.ts",
-    "build": "tsc --noEmit"
+    "build": "tsc --noEmit",
+    "test": "tsx --test src/lib/entra-link.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

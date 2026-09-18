@@ -1,17 +1,18 @@
 import { Router } from "express";
 import { z } from "zod";
 import { getUser } from "../auth.js";
+import { UNLINKED_EMPLOYEE_MESSAGE } from "../lib/entra-link.js";
 import { loadStore, mutate } from "../lib/store.js";
 
 export const meProfileRouter = Router();
 
 meProfileRouter.get("/profile", (req, res) => {
   const user = getUser(req);
+  const store = loadStore();
   if (!user.employeeId) {
-    res.status(400).json({ error: "Ce compte n'est pas lié à une fiche employé" });
+    res.json({ employee: null, department: null, settings: store.settings });
     return;
   }
-  const store = loadStore();
   const employee = store.employees.find((item) => item.id === user.employeeId);
   if (!employee) {
     res.status(404).json({ error: "Fiche introuvable" });
@@ -24,7 +25,7 @@ meProfileRouter.get("/profile", (req, res) => {
 meProfileRouter.put("/profile", (req, res) => {
   const user = getUser(req);
   if (!user.employeeId) {
-    res.status(400).json({ error: "Ce compte n'est pas lié à une fiche employé" });
+    res.status(409).json({ error: UNLINKED_EMPLOYEE_MESSAGE });
     return;
   }
   const parsed = z

@@ -45,6 +45,7 @@ const emptyForm = {
   mealTicket5: 0,
   mealTicket1650: 0,
   contractEndDate: "",
+  entraUserPrincipalName: "",
 };
 
 export function EmployeesPage() {
@@ -70,7 +71,8 @@ export function EmployeesPage() {
     const list = employees.data ?? [];
     const needle = query.trim().toLowerCase();
     return list.filter((employee) => {
-      const haystack = `${employee.firstName} ${employee.lastName} ${employee.email} ${employee.jobTitle}`.toLowerCase();
+      const haystack =
+        `${employee.firstName} ${employee.lastName} ${employee.email} ${employee.jobTitle} ${employee.entraUserPrincipalName ?? ""}`.toLowerCase();
       const matchQuery = !needle || haystack.includes(needle);
       const matchStatus = status === "all" || employee.status === status;
       const matchDept = departmentId === "all" || employee.departmentId === departmentId;
@@ -82,7 +84,9 @@ export function EmployeesPage() {
     setSaving(true);
     try {
       const created = await api<Employee>("/api/employees", { method: "POST", body: JSON.stringify(form) });
-      toast.success(`Fiche RH créée pour ${created.firstName} ${created.lastName}. Le compte se crée dans Microsoft Entra ID.`);
+      toast.success(
+        `Fiche RH créée pour ${created.firstName} ${created.lastName}. Associez ensuite le UPN Entra depuis la fiche.`,
+      );
       setOpen(false);
       setForm(emptyForm);
       await employees.reload();
@@ -219,11 +223,12 @@ export function EmployeesPage() {
       </Card>
 
       <div className="overflow-hidden rounded-3xl border border-ink/10 bg-white">
-        <div className="hidden grid-cols-[2fr_1.2fr_1fr_1fr_auto] gap-4 border-b border-ink/8 px-5 py-3 text-xs font-semibold tracking-wide text-ink/45 uppercase md:grid">
+        <div className="hidden grid-cols-[2fr_1.2fr_1fr_1fr_1fr_auto] gap-4 border-b border-ink/8 px-5 py-3 text-xs font-semibold tracking-wide text-ink/45 uppercase md:grid">
           <span>Collaborateur</span>
           <span>Poste</span>
           <span>Contrat</span>
           <span>Salaire brut</span>
+          <span>Microsoft</span>
           <span></span>
         </div>
         {filtered.length === 0 ? (
@@ -233,7 +238,7 @@ export function EmployeesPage() {
             <Link
               key={employee.id}
               to={`${base}/employes/${employee.id}`}
-              className="grid gap-2 border-b border-ink/6 px-5 py-4 transition last:border-b-0 hover:bg-paper/70 md:grid-cols-[2fr_1.2fr_1fr_1fr_auto] md:items-center"
+              className="grid gap-2 border-b border-ink/6 px-5 py-4 transition last:border-b-0 hover:bg-paper/70 md:grid-cols-[2fr_1.2fr_1fr_1fr_1fr_auto] md:items-center"
             >
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sage-dark text-xs font-semibold text-white">
@@ -257,6 +262,13 @@ export function EmployeesPage() {
                 <EmployeeBadge status={employee.status} />
               </div>
               <p className="font-medium">{money(employee.baseSalary, currency)}</p>
+              <p className="text-xs text-ink/55">
+                {employee.entraObjectId
+                  ? "Lié"
+                  : employee.entraUserPrincipalName
+                    ? "En attente"
+                    : "Non associé"}
+              </p>
               <span className="text-sm text-sage">Ouvrir</span>
             </Link>
           ))
@@ -272,12 +284,14 @@ export function EmployeeForm({
   onChange,
   onSubmit,
   saving,
+  showMicrosoftField = true,
 }: {
   form: EmployeeDraft;
   departments: Department[];
   onChange: (value: EmployeeDraft) => void;
   onSubmit: () => void;
   saving: boolean;
+  showMicrosoftField?: boolean;
 }) {
   function set<K extends keyof EmployeeDraft>(key: K, value: EmployeeDraft[K]) {
     onChange({ ...form, [key]: value });
@@ -297,9 +311,19 @@ export function EmployeeForm({
       <Field label="Nom">
         <Input value={form.lastName} onChange={(e) => set("lastName", e.target.value)} required />
       </Field>
-      <Field label="Email">
+      <Field label="Email professionnel (fiche RH)">
         <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} required />
       </Field>
+      {showMicrosoftField ? (
+        <Field label="Compte Microsoft (UPN Entra)">
+          <Input
+            type="email"
+            value={form.entraUserPrincipalName ?? ""}
+            onChange={(e) => set("entraUserPrincipalName", e.target.value)}
+            placeholder="emp-01@votre-tenant.onmicrosoft.com"
+          />
+        </Field>
+      ) : null}
       <Field label="Téléphone">
         <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} required />
       </Field>

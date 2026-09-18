@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { FadeIn, MotionItem, Stagger, staggerItem } from "@/components/fade-in";
-import { ErrorState, LoadingState } from "@/components/states";
+import { ErrorState, LoadingState, UnlinkedEmployeeState } from "@/components/states";
 import { PeriodBadge } from "@/components/status-badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { money, monthLabel } from "@/lib/format";
@@ -33,6 +33,8 @@ export function EmployeeHomePage() {
 
   return (
     <div className="space-y-6">
+      {!data.employee ? <UnlinkedEmployeeState /> : null}
+
       <FadeIn className="relative overflow-hidden rounded-3xl bg-employee px-6 py-8 text-white sm:px-8">
         <img src={photos.desk} alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />
         <div className="relative">

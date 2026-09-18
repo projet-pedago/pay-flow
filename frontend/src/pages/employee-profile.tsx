@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ErrorState, LoadingState } from "@/components/states";
+import { ErrorState, LoadingState, UnlinkedEmployeeState } from "@/components/states";
 import { EmployeeBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,7 +11,7 @@ import { money } from "@/lib/format";
 import type { Department, Employee, Settings } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
 
-type Payload = { employee: Employee; department?: Department; settings: Settings };
+type Payload = { employee: Employee | null; department?: Department | null; settings: Settings };
 
 export function EmployeeProfilePage() {
   const query = useApi<Payload>("/api/me/profile");
@@ -22,7 +22,7 @@ export function EmployeeProfilePage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!query.data) return;
+    if (!query.data?.employee) return;
     setPhone(query.data.employee.phone);
     setCity(query.data.employee.city);
     setCountry(query.data.employee.country);
@@ -30,7 +30,10 @@ export function EmployeeProfilePage() {
   }, [query.data]);
 
   if (query.loading) return <LoadingState />;
-  if (query.error || !query.data) return <ErrorState message={query.error ?? "Profil introuvable"} onRetry={query.reload} />;
+  if (query.error) return <ErrorState message={query.error} onRetry={query.reload} />;
+  if (!query.data?.employee) {
+    return <UnlinkedEmployeeState />;
+  }
 
   const { employee, department, settings } = query.data;
 

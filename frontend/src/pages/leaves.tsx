@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { LeaveCalendar } from "@/components/leave-calendar";
-import { ErrorState, LoadingState } from "@/components/states";
+import { ErrorState, LoadingState, UnlinkedEmployeeState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,6 +33,7 @@ export function LeavesPage() {
 
   if (query.loading) return <LoadingState />;
   if (query.error || !query.data) return <ErrorState message={query.error ?? "Erreur"} onRetry={query.reload} />;
+  if (!staff && query.data.balances.length === 0) return <UnlinkedEmployeeState />;
 
   async function submit() {
     setSaving(true);

@@ -43,6 +43,7 @@ export type Employee = {
   mealTicket1650: number;
   contractEndDate?: string;
   entraObjectId?: string;
+  entraUserPrincipalName?: string;
 };
 
 export type EmployeeDraft = Omit<Employee, "id">;

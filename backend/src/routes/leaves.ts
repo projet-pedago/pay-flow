@@ -4,6 +4,7 @@ import { getUser, requireStaff, requireAuth } from "../auth.js";
 import { isStaff } from "../lib/roles.js";
 import { pushAudit } from "../lib/audit.js";
 import { countWeekdays, LEAVE_LABELS } from "../lib/dates.js";
+import { UNLINKED_EMPLOYEE_MESSAGE } from "../lib/entra-link.js";
 import { leaveBalancesFor, leaveRemaining } from "../lib/leave-balance.js";
 import { notifyAdmins, notifyEmployee } from "../lib/notify.js";
 import { id, loadStore, mutate } from "../lib/store.js";
@@ -49,7 +50,7 @@ leavesRouter.post("/", (req, res) => {
   }
   const employeeId = isStaff(user.role) ? parsed.data.employeeId ?? user.employeeId : user.employeeId;
   if (!employeeId) {
-    res.status(400).json({ error: "Employé manquant" });
+    res.status(409).json({ error: UNLINKED_EMPLOYEE_MESSAGE });
     return;
   }
   const days = countWeekdays(parsed.data.startDate, parsed.data.endDate);

@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { ErrorState, LoadingState } from "@/components/states";
+import { ErrorState, LoadingState, UnlinkedEmployeeState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { api } from "@/lib/api";
@@ -17,6 +17,7 @@ export function DocumentsPage() {
 
   if (query.loading) return <LoadingState />;
   if (query.error || !query.data) return <ErrorState message={query.error ?? "Erreur"} onRetry={query.reload} />;
+  if (!staff && query.data.length === 0) return <UnlinkedEmployeeState />;
 
   async function toggle(id: string) {
     await api(`/api/documents/${id}/toggle`, { method: "POST" });

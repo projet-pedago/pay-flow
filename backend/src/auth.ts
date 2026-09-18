@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "./lib/env.js";
+import { linkMicrosoftEmployee } from "./lib/entra-link.js";
 import { getSupabase } from "./lib/supabase.js";
 import { isStaff } from "./lib/roles.js";
 import type { Role } from "./types.js";
@@ -107,7 +108,8 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return;
   }
   try {
-    (req as Request & { user?: TokenUser }).user = jwt.verify(token, JWT_SECRET) as TokenUser;
+    const verified = jwt.verify(token, JWT_SECRET) as TokenUser;
+    (req as Request & { user?: TokenUser }).user = attachEmployeeFiche(verified);
     next();
     return;
   } catch {
@@ -115,7 +117,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   }
   const supabaseUser = await resolveSupabaseUser(token);
   if (supabaseUser) {
-    (req as Request & { user?: TokenUser }).user = supabaseUser;
+    (req as Request & { user?: TokenUser }).user = attachEmployeeFiche(supabaseUser);
     next();
     return;
   }
@@ -145,6 +147,13 @@ export async function requireStaff(req: Request, res: Response, next: NextFuncti
 export function getUser(req: Request): TokenUser {
   const user = (req as Request & { user?: TokenUser }).user;
   if (!user) throw new Error("Utilisateur manquant");
+  return user;
+}
+
+function attachEmployeeFiche(user: TokenUser): TokenUser {
+  if (user.role !== "employee") return user;
+  const linked = linkMicrosoftEmployee({ id: user.id, email: user.email });
+  user.employeeId = linked?.id;
   return user;
 }
 

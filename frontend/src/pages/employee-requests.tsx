@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ErrorState, LoadingState } from "@/components/states";
+import { ErrorState, LoadingState, UnlinkedEmployeeState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { moneyExact } from "@/lib/format";
 import type { LeaveRequest, SalaryAdvance } from "@/lib/types";
@@ -13,11 +13,12 @@ const style: Record<string, string> = {
 };
 
 export function EmployeeRequestsPage() {
-  const leaves = useApi<{ leaves: LeaveRequest[]; labels: Record<string, string> }>("/api/leaves");
+  const leaves = useApi<{ leaves: LeaveRequest[]; balances: unknown[]; labels: Record<string, string> }>("/api/leaves");
   const advances = useApi<SalaryAdvance[]>("/api/advances");
 
   if (leaves.loading || advances.loading) return <LoadingState />;
   if (leaves.error) return <ErrorState message={leaves.error} onRetry={leaves.reload} />;
+  if ((leaves.data?.balances.length ?? 0) === 0) return <UnlinkedEmployeeState />;
 
   const rows = [
     ...(leaves.data?.leaves ?? []).map((item) => ({

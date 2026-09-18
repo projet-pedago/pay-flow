@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { ErrorState, LoadingState } from "@/components/states";
 import { EmployeeBadge, PeriodBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { money, monthLabel } from "@/lib/format";
@@ -67,14 +69,19 @@ export function EmployeeDetailPage() {
             <EmployeeBadge status={employee.status} />
             <span className="text-sm text-ink/55">{employee.jobTitle}</span>
           </div>
-          <p className="mt-2 text-sm text-ink/55">
-            Compte Microsoft : {employee.entraObjectId ? `lié (${employee.entraObjectId})` : "à rattacher à la première connexion Entra"}
-          </p>
         </div>
         <Button onClick={() => void save()} disabled={saving}>
           {saving ? "Sauvegarde…" : "Enregistrer le profil"}
         </Button>
       </div>
+
+      <MicrosoftLinkCard
+        employee={employee}
+        onLinked={(updated) => {
+          setDraft(updated);
+          void employeeQuery.reload();
+        }}
+      />
 
       <Card>
         <CardHeader>
@@ -87,6 +94,7 @@ export function EmployeeDetailPage() {
             onChange={(value) => setDraft({ ...employee, ...value })}
             onSubmit={() => void save()}
             saving={saving}
+            showMicrosoftField={false}
           />
           <div className="mt-4 flex flex-wrap gap-3 text-sm">
             <Link to={`${base}/attestations/${employee.id}/travail`} className="text-sage underline">
@@ -127,5 +135,100 @@ export function EmployeeDetailPage() {
         </Card>
       ) : null}
     </div>
+  );
+}
+
+function MicrosoftLinkCard({
+  employee,
+  onLinked,
+}: {
+  employee: Employee;
+  onLinked: (employee: Employee) => void;
+}) {
+  const [upn, setUpn] = useState(employee.entraUserPrincipalName ?? "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setUpn(employee.entraUserPrincipalName ?? "");
+  }, [employee.id, employee.entraUserPrincipalName]);
+
+  async function associate() {
+    setSaving(true);
+    try {
+      const updated = await api<Employee>(`/api/employees/${employee.id}/microsoft-link`, {
+        method: "PUT",
+        body: JSON.stringify({ entraUserPrincipalName: upn }),
+      });
+      onLinked(updated);
+      toast.success(
+        "Compte Microsoft associé. Le salarié verra salaire, bulletins, contrat, congés et documents à la prochaine requête.",
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Association impossible");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const status = employee.entraObjectId
+    ? `lié — oid enregistré${employee.entraUserPrincipalName ? ` · ${employee.entraUserPrincipalName}` : ""}`
+    : employee.entraUserPrincipalName
+      ? `en attente de connexion (${employee.entraUserPrincipalName})`
+      : "non associé";
+
+  return (
+    <Card>
+      <CardHeader>
+        <div>
+          <h3 className="font-display text-xl">Compte Microsoft</h3>
+          <p className="mt-1 text-sm text-ink/55">
+            Identité Entra : {status}. L’email de la fiche RH ({employee.email}) n’a pas besoin de correspondre à l’UPN.
+          </p>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <Label htmlFor="entra-upn">UPN Entra</Label>
+          <Input
+            id="entra-upn"
+            type="email"
+            value={upn}
+            onChange={(event) => setUpn(event.target.value)}
+            placeholder="emp-01@votre-tenant.onmicrosoft.com"
+          />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => void associate()} disabled={saving || !upn.trim()}>
+            {saving ? "Association…" : "Associer le compte Microsoft"}
+          </Button>
+          {employee.entraUserPrincipalName || employee.entraObjectId ? (
+            <Button
+              variant="outline"
+              disabled={saving}
+              onClick={() => {
+                setUpn("");
+                void (async () => {
+                  setSaving(true);
+                  try {
+                    const updated = await api<Employee>(`/api/employees/${employee.id}/microsoft-link`, {
+                      method: "PUT",
+                      body: JSON.stringify({ entraUserPrincipalName: "" }),
+                    });
+                    onLinked(updated);
+                    toast.success("Compte Microsoft dissocié.");
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Dissociation impossible");
+                  } finally {
+                    setSaving(false);
+                  }
+                })();
+              }}
+            >
+              Dissocier
+            </Button>
+          ) : null}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

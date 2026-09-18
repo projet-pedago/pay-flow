@@ -1,20 +1,23 @@
 import { useParams } from "react-router-dom";
-import { ErrorState, LoadingState } from "@/components/states";
+import { ErrorState, LoadingState, UnlinkedEmployeeState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { moneyExact } from "@/lib/format";
-import type { Attestation } from "@/lib/types";
+import type { Attestation, Employee } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
 
 export function AttestationPage() {
   const { user } = useAuth();
   const params = useParams();
   const kind = (params.kind === "salaire" ? "salaire" : "travail") as "travail" | "salaire";
-  const employeeId = params.employeeId ?? user?.employeeId;
+  const profile = useApi<{ employee: Employee | null }>(params.employeeId ? null : "/api/me/profile");
+  const employeeId = params.employeeId ?? profile.data?.employee?.id ?? user?.employeeId ?? undefined;
   const { data, error, loading, reload } = useApi<Attestation>(
     employeeId ? `/api/attestations/${employeeId}/${kind}` : null,
   );
 
+  if (!params.employeeId && profile.loading) return <LoadingState label="Préparation de l’attestation…" />;
+  if (!employeeId) return <UnlinkedEmployeeState />;
   if (loading) return <LoadingState label="Préparation de l’attestation…" />;
   if (error || !data) return <ErrorState message={error ?? "Document introuvable"} onRetry={reload} />;
 

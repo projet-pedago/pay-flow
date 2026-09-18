@@ -18,11 +18,15 @@ const links = [
 ];
 
 export function EmployeeLayout({ children }: { children: ReactNode }) {
-  const { user, logout } = useAuth();
+  const { user, logout, refresh } = useAuth();
   const [open, setOpen] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
   const location = useLocation();
   const printMode = /\/bulletins\/[^/]+$/.test(location.pathname);
+
+  useEffect(() => {
+    void refresh();
+  }, [location.pathname, refresh]);
 
   useEffect(() => {
     if (!open) return;

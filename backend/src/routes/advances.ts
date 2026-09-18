@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getUser, requireStaff, requireAuth } from "../auth.js";
 import { isStaff } from "../lib/roles.js";
 import { advanceQuota } from "../lib/advance-cap.js";
+import { UNLINKED_EMPLOYEE_MESSAGE } from "../lib/entra-link.js";
 import { notifyAdmins, notifyEmployee } from "../lib/notify.js";
 import { id, loadStore, mutate } from "../lib/store.js";
 
@@ -11,12 +12,21 @@ advancesRouter.use(requireAuth);
 
 advancesRouter.get("/quota", (req, res) => {
   const user = getUser(req);
+  const now = new Date();
   if (!user.employeeId) {
-    res.status(400).json({ error: "Compte sans fiche employé" });
+    res.json({
+      linked: false,
+      ratio: 0,
+      reference: 0,
+      cap: 0,
+      used: 0,
+      remaining: 0,
+      year: now.getFullYear(),
+      month: now.getMonth() + 1,
+    });
     return;
   }
-  const now = new Date();
-  res.json(advanceQuota(loadStore(), user.employeeId, now.getFullYear(), now.getMonth() + 1));
+  res.json({ linked: true, ...advanceQuota(loadStore(), user.employeeId, now.getFullYear(), now.getMonth() + 1) });
 });
 
 advancesRouter.get("/", (req, res) => {
@@ -44,8 +54,12 @@ advancesRouter.post("/", (req, res) => {
       reason: z.string().min(2),
     })
     .safeParse(req.body);
-  if (!parsed.success || !user.employeeId) {
+  if (!parsed.success) {
     res.status(400).json({ error: "Demande incomplète" });
+    return;
+  }
+  if (!user.employeeId) {
+    res.status(409).json({ error: UNLINKED_EMPLOYEE_MESSAGE });
     return;
   }
   const created = mutate((store) => {
