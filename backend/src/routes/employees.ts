@@ -252,7 +252,9 @@ employeesRouter.put("/:id", (req, res) => {
   const updated = mutate((store) => {
     const index = store.employees.findIndex((item) => item.id === req.params.id);
     if (index < 0) return null;
-    store.employees[index] = { ...store.employees[index], ...parsed.data };
+    const patch = { ...parsed.data };
+    if (patch.entraObjectId === "") delete patch.entraObjectId;
+    store.employees[index] = { ...store.employees[index], ...patch };
     const user = store.users.find((item) => item.employeeId === req.params.id);
     if (user) {
       user.email = store.employees[index].email;
