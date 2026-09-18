@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { MicrosoftAssociateDialog } from "@/components/microsoft-associate-dialog";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { initials, money } from "@/lib/format";
@@ -17,7 +18,7 @@ import { ficheBase } from "@/lib/roles";
 import type { Civility, ContractType, Department, Employee, EmployeeDraft, EmployeeStatus, Settings } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
 
-const emptyForm = {
+const emptyForm: EmployeeDraft = {
   firstName: "",
   lastName: "",
   email: "",
@@ -46,10 +47,12 @@ const emptyForm = {
   mealTicket1650: 0,
   contractEndDate: "",
   entraUserPrincipalName: "",
+  directoryRole: "employee" as Employee["directoryRole"],
 };
 
 export function EmployeesPage() {
   const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const fiches = ficheBase(user?.role === "hr" ? "hr" : "admin");
   const employees = useApi<Employee[]>("/api/employees");
   const departments = useApi<Department[]>("/api/departments");
@@ -57,6 +60,7 @@ export function EmployeesPage() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [departmentId, setDepartmentId] = useState("all");
+  const [associate, setAssociate] = useState<Employee | null>(null);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -85,7 +89,7 @@ export function EmployeesPage() {
     try {
       const created = await api<Employee>("/api/employees", { method: "POST", body: JSON.stringify(form) });
       toast.success(
-        `Fiche RH créée pour ${created.firstName} ${created.lastName}. Associez ensuite le UPN Entra depuis la fiche.`,
+        `Fiche RH créée pour ${created.firstName} ${created.lastName}. Associez ensuite le compte Microsoft depuis Utilisateurs.`,
       );
       setOpen(false);
       setForm(emptyForm);
@@ -109,7 +113,8 @@ export function EmployeesPage() {
         <div>
           <h2 className="font-display text-3xl sm:text-4xl">Fiches RH</h2>
           <p className="mt-2 text-sm text-ink/60">
-            {filtered.length} fiche{filtered.length > 1 ? "s" : ""} salarié{filtered.length > 1 ? "s" : ""} · paie, contrat et association Microsoft.
+            {filtered.length} fiche{filtered.length > 1 ? "s" : ""} salarié{filtered.length > 1 ? "s" : ""} · paie et contrat.
+            {isAdmin ? " L’association Microsoft se fait dans Utilisateurs, par un administrateur." : " L’association Microsoft est gérée par l’administrateur."}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -126,26 +131,30 @@ export function EmployeesPage() {
           >
             Export Excel (CSV)
           </Button>
-          <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setForm({ ...emptyForm, departmentId: departments.data?.[0]?.id ?? "" })}>
-              <Plus className="h-4 w-4" />
-              Nouvel employé
-            </Button>
-          </DialogTrigger>
-          <DialogContent title="Ajouter un employé">
-            <EmployeeForm
-              form={form}
-              departments={departments.data ?? []}
-              onChange={(value) => setForm({ ...emptyForm, ...value, contractEndDate: value.contractEndDate ?? "" })}
-              onSubmit={createEmployee}
-              saving={saving}
-            />
-          </DialogContent>
-          </Dialog>
+          {isAdmin ? (
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={() => setForm({ ...emptyForm, departmentId: departments.data?.[0]?.id ?? "" })}>
+                  <Plus className="h-4 w-4" />
+                  Nouvel employé
+                </Button>
+              </DialogTrigger>
+              <DialogContent title="Ajouter un employé">
+                <EmployeeForm
+                  form={form}
+                  departments={departments.data ?? []}
+                  onChange={(value) => setForm({ ...emptyForm, ...value, contractEndDate: value.contractEndDate ?? "" })}
+                  onSubmit={createEmployee}
+                  saving={saving}
+                  showMicrosoftField={false}
+                />
+              </DialogContent>
+            </Dialog>
+          ) : null}
         </div>
       </div>
 
+      {isAdmin ? (
       <Card>
         <CardContent className="space-y-3">
           <p className="text-sm font-semibold">Import CSV (onboarding en masse)</p>
@@ -198,6 +207,7 @@ export function EmployeesPage() {
           ) : null}
         </CardContent>
       </Card>
+      ) : null}
 
       <Card>
         <CardContent className="grid gap-3 md:grid-cols-4">
@@ -235,12 +245,11 @@ export function EmployeesPage() {
           <p className="px-5 py-12 text-center text-sm text-ink/50">Aucun employé ne correspond à ces filtres.</p>
         ) : (
           filtered.map((employee) => (
-            <Link
+            <div
               key={employee.id}
-              to={`${fiches}/${employee.id}`}
-              className="grid gap-2 border-b border-ink/6 px-5 py-4 transition last:border-b-0 hover:bg-paper/70 md:grid-cols-[2fr_1.2fr_1fr_1fr_1fr_auto] md:items-center"
+              className="grid gap-2 border-b border-ink/6 px-5 py-4 last:border-b-0 md:grid-cols-[2fr_1.2fr_1fr_1fr_1fr_auto] md:items-center"
             >
-              <div className="flex items-center gap-3">
+              <Link to={`${fiches}/${employee.id}`} className="flex items-center gap-3 hover:opacity-90">
                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sage-dark text-xs font-semibold text-white">
                   {initials(employee.firstName, employee.lastName)}
                 </div>
@@ -252,7 +261,7 @@ export function EmployeesPage() {
                     {deptMap[employee.departmentId]?.name ?? "—"} · {employee.city}
                   </p>
                 </div>
-              </div>
+              </Link>
               <p className="text-sm">{employee.jobTitle}</p>
               <div className="flex items-center gap-2">
                 <span className="text-sm">{employee.contractType}</span>
@@ -264,16 +273,37 @@ export function EmployeesPage() {
               <p className="font-medium">{money(employee.baseSalary, currency)}</p>
               <p className="text-xs text-ink/55">
                 {employee.entraObjectId
-                  ? "Lié"
-                  : employee.entraUserPrincipalName
-                    ? "En attente"
-                    : "Non associé"}
+                  ? employee.entraUserPrincipalName || "Lié"
+                  : "Non associé"}
               </p>
-              <span className="text-sm text-sage">Ouvrir</span>
-            </Link>
+              <div className="flex flex-wrap gap-2">
+                <Link to={`${fiches}/${employee.id}`} className="text-sm text-sage">
+                  Ouvrir
+                </Link>
+                {isAdmin ? (
+                  <button
+                    type="button"
+                    className="text-sm font-semibold text-ink hover:underline"
+                    onClick={() => setAssociate(employee)}
+                  >
+                    Associer
+                  </button>
+                ) : null}
+              </div>
+            </div>
           ))
         )}
       </div>
+      <MicrosoftAssociateDialog
+        employee={associate}
+        open={Boolean(associate)}
+        onOpenChange={(openDialog) => {
+          if (!openDialog) setAssociate(null);
+        }}
+        onLinked={() => {
+          void employees.reload();
+        }}
+      />
     </div>
   );
 }
@@ -284,7 +314,7 @@ export function EmployeeForm({
   onChange,
   onSubmit,
   saving,
-  showMicrosoftField = true,
+  showMicrosoftField = false,
 }: {
   form: EmployeeDraft;
   departments: Department[];

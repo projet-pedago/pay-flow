@@ -44,6 +44,7 @@ export type Employee = {
   contractEndDate?: string;
   entraObjectId?: string;
   entraUserPrincipalName?: string;
+  directoryRole?: Role;
 };
 
 export type ContributionRate = {

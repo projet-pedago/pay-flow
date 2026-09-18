@@ -134,23 +134,31 @@ function readAndMigrate(): Store {
     dirty = true;
   }
   store.employees = store.employees.map((employee, index) => {
-    if (employee.matricule && employee.contractHours) return employee;
+    let next = employee;
+    if (!employee.directoryRole) {
+      dirty = true;
+      next = { ...next, directoryRole: "employee" };
+    }
+    if (next.matricule && next.contractHours && next.directoryRole) {
+      return next;
+    }
     dirty = true;
     return {
-      ...employee,
-      civility: employee.civility ?? "M",
-      matricule: employee.matricule ?? String(1001 + index),
-      address: employee.address ?? "",
-      postalCode: employee.postalCode ?? "",
-      socialSecurityNumber: employee.socialSecurityNumber ?? "",
-      category: employee.category ?? "Non Cadre",
-      coefficient: employee.coefficient ?? "220",
-      classificationIndex: employee.classificationIndex ?? "1.3.1",
-      qualification: employee.qualification ?? "",
-      contractHours: employee.contractHours ?? store.settings.monthlyHours,
-      pasRate: employee.pasRate ?? 0,
-      mealTicket5: employee.mealTicket5 ?? 0,
-      mealTicket1650: employee.mealTicket1650 ?? 0,
+      ...next,
+      civility: next.civility ?? "M",
+      matricule: next.matricule ?? String(1001 + index),
+      address: next.address ?? "",
+      postalCode: next.postalCode ?? "",
+      socialSecurityNumber: next.socialSecurityNumber ?? "",
+      category: next.category ?? "Non Cadre",
+      coefficient: next.coefficient ?? "220",
+      classificationIndex: next.classificationIndex ?? "1.3.1",
+      qualification: next.qualification ?? "",
+      contractHours: next.contractHours ?? store.settings.monthlyHours,
+      pasRate: next.pasRate ?? 0,
+      mealTicket5: next.mealTicket5 ?? 0,
+      mealTicket1650: next.mealTicket1650 ?? 0,
+      directoryRole: next.directoryRole ?? "employee",
     };
   });
   if (dirty) writeStore(store);

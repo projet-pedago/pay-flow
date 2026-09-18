@@ -44,6 +44,7 @@ export type Employee = {
   contractEndDate?: string;
   entraObjectId?: string;
   entraUserPrincipalName?: string;
+  directoryRole?: "admin" | "hr" | "employee";
 };
 
 export type EmployeeDraft = Omit<Employee, "id">;

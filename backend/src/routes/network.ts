@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireAdmin } from "../auth.js";
+import { isPayrollEmployee } from "../lib/directory-role.js";
 import { id, loadStore, mutate } from "../lib/store.js";
 import type { InvoiceDirection, InvoiceStatus, NetworkClientKind, NetworkPartnerKind } from "../types.js";
 
@@ -135,7 +136,7 @@ networkRouter.get("/", (_req, res) => {
     clients: store.clients,
     partners: store.partners,
     invoices: [...store.invoices].sort((a, b) => b.date.localeCompare(a.date)),
-    employees: store.employees.map((item) => ({
+    employees: store.employees.filter(isPayrollEmployee).map((item) => ({
       id: item.id,
       name: `${item.firstName} ${item.lastName}`,
       jobTitle: item.jobTitle,

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAdmin } from "../auth.js";
+import { isPayrollEmployee } from "../lib/directory-role.js";
 import { loadStore } from "../lib/store.js";
 import type { ContractType } from "../types.js";
 
@@ -17,7 +18,7 @@ dashboardRouter.get("/", (_req, res) => {
   const kpiPeriod =
     sorted.find((period) => currentSlips(store.payslips).some((slip) => slip.periodId === period.id)) ?? latest;
   const latestSlips = currentSlips(store.payslips).filter((item) => item.periodId === kpiPeriod?.id);
-  const activeEmployees = store.employees.filter((item) => item.status !== "terminated");
+  const activeEmployees = store.employees.filter((item) => item.status !== "terminated" && isPayrollEmployee(item));
   const workingDays = store.settings.workingDays || 22;
   const year = kpiPeriod?.year ?? new Date().getFullYear();
   const month = kpiPeriod?.month ?? new Date().getMonth() + 1;
@@ -90,7 +91,7 @@ dashboardRouter.get("/", (_req, res) => {
     settings: store.settings,
     kpis: {
       headcount: activeEmployees.length,
-      onLeave: store.employees.filter((item) => item.status === "on_leave").length,
+      onLeave: store.employees.filter((item) => item.status === "on_leave" && isPayrollEmployee(item)).length,
       gross: latestSlips.reduce((sum, slip) => sum + slip.gross, 0),
       net: latestSlips.reduce((sum, slip) => sum + slip.net, 0),
       employerCost,
@@ -115,8 +116,8 @@ dashboardRouter.get("/", (_req, res) => {
     alerts: [
       latest?.status === "draft" ? "Le cycle de paie du mois en cours n'est pas encore calculé." : null,
       latest?.status === "calculated" ? "La paie est calculée mais pas encore validée." : null,
-      store.employees.some((item) => item.status === "on_leave")
-        ? `${store.employees.filter((item) => item.status === "on_leave").length} personne(s) en congé ce mois-ci.`
+      store.employees.some((item) => item.status === "on_leave" && isPayrollEmployee(item))
+        ? `${store.employees.filter((item) => item.status === "on_leave" && isPayrollEmployee(item)).length} personne(s) en congé ce mois-ci.`
         : null,
     ].filter(Boolean),
     anomalies: [
@@ -174,11 +175,11 @@ dashboardRouter.get("/", (_req, res) => {
 
 dashboardRouter.get("/export", (_req, res) => {
   const store = loadStore();
-  const active = store.employees.filter((item) => item.status !== "terminated");
+  const active = store.employees.filter((item) => item.status !== "terminated" && isPayrollEmployee(item));
   const header = "indicateur;valeur";
   const rows = [
     `effectif actif;${active.length}`,
-    `en conge;${store.employees.filter((item) => item.status === "on_leave").length}`,
+    `en conge;${store.employees.filter((item) => item.status === "on_leave" && isPayrollEmployee(item)).length}`,
     `femmes;${active.filter((item) => item.civility === "Mme").length}`,
     `hommes;${active.filter((item) => item.civility !== "Mme").length}`,
     `CDI;${active.filter((item) => item.contractType === "CDI").length}`,

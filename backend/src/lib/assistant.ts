@@ -3,6 +3,7 @@ import { buildCalcSteps } from "./calc-steps.js";
 import { leaveBalancesFor } from "./leave-balance.js";
 import { LEAVE_LABELS } from "./dates.js";
 import { calculatePayslip } from "./payroll.js";
+import { isPayrollEmployee } from "./directory-role.js";
 import { isStaff } from "./roles.js";
 
 function consoleLink(role: Role, adminPath: string, employeePath: string) {
@@ -206,7 +207,8 @@ export function answerAssistant(store: Store, user: { role: Role; employeeId?: s
     const today = new Date().toISOString().slice(0, 10);
     const horizon = new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10);
     const expiring = store.employees.filter(
-      (item) => item.contractEndDate && item.status !== "terminated" && item.contractEndDate <= horizon,
+      (item) =>
+        isPayrollEmployee(item) && item.contractEndDate && item.status !== "terminated" && item.contractEndDate <= horizon,
     );
     const lines = expiring.length
       ? expiring.map((item) => {
@@ -237,8 +239,8 @@ export function answerAssistant(store: Store, user: { role: Role; employeeId?: s
     const slips = currentSlips(store).filter((item) => item.periodId === kpiPeriod?.id);
     const cost = slips.reduce((sum, item) => sum + item.employerCost, 0);
     const pending = store.leaves.filter((item) => item.status === "pending").length + store.advances.filter((item) => item.status === "pending").length;
-    const onLeave = store.employees.filter((item) => item.status === "on_leave").length;
-    const active = store.employees.filter((item) => item.status !== "terminated").length;
+    const onLeave = store.employees.filter((item) => item.status === "on_leave" && isPayrollEmployee(item)).length;
+    const active = store.employees.filter((item) => item.status !== "terminated" && isPayrollEmployee(item)).length;
     return {
       answer: [
         kpiPeriod ? `Dernier cycle chiffré : ${String(kpiPeriod.month).padStart(2, "0")}/${kpiPeriod.year}.` : "Pas encore de cycle calculé.",

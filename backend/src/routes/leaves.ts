@@ -4,6 +4,7 @@ import { getUser, requireStaff, requireAuth } from "../auth.js";
 import { isStaff } from "../lib/roles.js";
 import { pushAudit } from "../lib/audit.js";
 import { countWeekdays, LEAVE_LABELS } from "../lib/dates.js";
+import { isPayrollEmployee } from "../lib/directory-role.js";
 import { UNLINKED_EMPLOYEE_MESSAGE } from "../lib/entra-link.js";
 import { leaveBalancesFor, leaveRemaining } from "../lib/leave-balance.js";
 import { notifyAdmins, notifyEmployee } from "../lib/notify.js";
@@ -24,7 +25,7 @@ leavesRouter.get("/", (req, res) => {
       return { ...leave, employeeName: employee ? `${employee.firstName} ${employee.lastName}` : leave.employeeId };
     });
   const balances = store.employees
-    .filter((employee) => (isStaff(user.role) ? true : employee.id === user.employeeId))
+    .filter((employee) => (isStaff(user.role) ? isPayrollEmployee(employee) : employee.id === user.employeeId))
     .map((employee) => ({
       employeeId: employee.id,
       name: `${employee.firstName} ${employee.lastName}`,

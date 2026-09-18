@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { getUser, requireAuth } from "../auth.js";
+import { isPayrollEmployee } from "../lib/directory-role.js";
 import { isStaff } from "../lib/roles.js";
 import { loadStore, mutate } from "../lib/store.js";
 
@@ -14,7 +15,11 @@ documentsRouter.get("/", (req, res) => {
       ? store.documents
       : store.documents.filter((item) => item.employeeId === user.employeeId);
   const byEmployee = store.employees
-    .filter((employee) => (isStaff(user.role) ? employee.status !== "terminated" : employee.id === user.employeeId))
+    .filter((employee) =>
+      isStaff(user.role)
+        ? employee.status !== "terminated" && isPayrollEmployee(employee)
+        : employee.id === user.employeeId,
+    )
     .map((employee) => {
       const docs = documents.filter((item) => item.employeeId === employee.id);
       const missing = docs.filter((item) => item.status === "missing").length;

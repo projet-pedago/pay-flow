@@ -20,6 +20,8 @@ export const FALLBACK_PAYFLOW_APPROLE_IDS: Record<string, PayflowEntraRole> = {
 export type EntraDirectoryUser = {
   id: string;
   displayName: string;
+  givenName: string | null;
+  surname: string | null;
   userPrincipalName: string;
   mail: string | null;
   accountEnabled: boolean;
@@ -180,6 +182,8 @@ type ServicePrincipal = {
 type GraphDirectoryUser = {
   id: string;
   displayName?: string;
+  givenName?: string | null;
+  surname?: string | null;
   userPrincipalName?: string;
   mail?: string | null;
   accountEnabled?: boolean;
@@ -244,7 +248,7 @@ export async function listPayflowEntraUsers(): Promise<EntraDirectoryUser[]> {
   }
 
   const directory = await graphList<GraphDirectoryUser>(
-    "/users?$select=id,displayName,userPrincipalName,mail,accountEnabled&$expand=appRoleAssignments",
+    "/users?$select=id,displayName,givenName,surname,userPrincipalName,mail,accountEnabled&$expand=appRoleAssignments",
   );
 
   const catalog = envAppRoleCatalog();
@@ -268,6 +272,8 @@ export async function listPayflowEntraUsers(): Promise<EntraDirectoryUser[]> {
     users.push({
       id: profile.id,
       displayName: profile.displayName || upn || profile.id,
+      givenName: profile.givenName?.trim() || null,
+      surname: profile.surname?.trim() || null,
       userPrincipalName: upn,
       mail: profile.mail ?? null,
       accountEnabled: profile.accountEnabled !== false,

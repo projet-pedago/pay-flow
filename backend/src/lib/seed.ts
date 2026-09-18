@@ -70,6 +70,7 @@ function staff(
     pasRate: data.pasRate ?? 0,
     mealTicket5: data.mealTicket5 ?? 8,
     mealTicket1650: data.mealTicket1650 ?? 0,
+    directoryRole: "employee",
   };
 }
 

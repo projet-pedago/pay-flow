@@ -230,13 +230,13 @@ Les comptes de connexion se créent **uniquement dans Microsoft Entra ID**. `GET
 
 Permission Graph minimale : `User.Read.All` (liste des utilisateurs et de leurs `appRoleAssignments`). `Application.Read.All` (ou `Directory.Read.All`) est optionnelle : sans elle, PayFlow associe les GUID de rôles connus (`AZURE_PAYFLOW_ROLE_*_ID` ou valeurs intégrées). Aucune écriture Entra. Seule l’application entreprise **PayFlow** compte ; **PayFlow-Frontend** et **PayFlow-Provisioning** sont ignorées.
 
-`POST /api/employees` crée une fiche RH, pas un compte. Les rôles `PAYFLOW_ADMIN`, `PAYFLOW_HR` et `PAYFLOW_EMPLOYEE` ouvrent respectivement `/admin`, `/rh` et `/espace`.
+`POST /api/employees` (Admin uniquement) crée une identité PayRollFlow, pas un compte Microsoft. `PUT /api/employees/:id/microsoft-link` (Admin uniquement) associe l’oid Entra si le prénom/nom et le rôle correspondent (`PAYFLOW_EMPLOYEE` ↔ Employé, `PAYFLOW_HR` ↔ RH, `PAYFLOW_ADMIN` ↔ Admin). Les rôles Entra ouvrent respectivement `/espace`, `/rh` et `/admin`.
 
 Un salarié n’est pas identifié par son email RH. La chaîne est :
 
 `compte Microsoft (oid)` → `employees[].entraObjectId` / `entraUserPrincipalName` → `employeeId` → salaire, bulletins, contrat, congés, demandes, documents.
 
-Si l’UPN Entra (`emp-01@…onmicrosoft.com`) diffère de l’email de la fiche (`aminata.diallo@payrollflow.demo`), Admin ou RH associe le compte depuis **Employés → fiche → Compte Microsoft**. À la connexion suivante (ou à la prochaine requête `/api/me/*`, sans se reconnecter), l’oid est enregistré. Tant que la fiche n’est pas liée, l’espace collaborateur s’affiche vide au lieu de renvoyer HTTP 400.
+Si l’UPN Entra (`emp-01@…onmicrosoft.com`) diffère de l’email de la fiche (`aminata.diallo@payrollflow.demo`), **seul l’administrateur** associe le compte depuis **Utilisateurs** (créer l’identité prénom/nom/type, puis Associer). Le backend refuse l’association si le prénom/nom Entra ou le rôle PayFlow ne correspondent pas. Le RH voit les fiches et les demandes, sans bouton d’association. À la connexion suivante, l’oid ouvre `/espace`, `/rh` ou `/admin` selon le rôle. Tant que la fiche employé n’est pas liée, l’espace collaborateur s’affiche vide au lieu de renvoyer HTTP 400.
 
 Si une erreur **AADSTS…** apparaît après le redémarrage, le code complet indique la prochaine correction (URI de redirection, consentement, audience).
 

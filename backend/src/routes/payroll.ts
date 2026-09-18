@@ -7,6 +7,7 @@ import { buildCalcSteps } from "../lib/calc-steps.js";
 import { leaveDaysInMonth } from "../lib/dates.js";
 import { notifyEmployee } from "../lib/notify.js";
 import { calculatePayslip } from "../lib/payroll.js";
+import { isPayrollEmployee } from "../lib/directory-role.js";
 import { id, loadStore, mutate } from "../lib/store.js";
 
 type ActionError = { error: string; status: number };
@@ -138,7 +139,7 @@ payrollRouter.get("/periods/:id", (req, res) => {
   }
   const slips = store.payslips.filter((item) => item.periodId === period.id && !item.superseded);
   const suggestions = store.employees
-    .filter((employee) => employee.status !== "terminated")
+    .filter((employee) => employee.status !== "terminated" && isPayrollEmployee(employee))
     .map((employee) => {
       const leaveDays = store.leaves
         .filter((item) => item.employeeId === employee.id && item.status === "approved")
@@ -194,7 +195,7 @@ payrollRouter.post("/periods/:id/calculate", (req, res) => {
     const slips = parsed.data.entries
       .map((entry) => {
         const employee = store.employees.find((item) => item.id === entry.employeeId);
-        if (!employee || employee.status === "terminated") return null;
+        if (!employee || employee.status === "terminated" || !isPayrollEmployee(employee)) return null;
         const leaveDays = store.leaves
           .filter((item) => item.employeeId === employee.id && item.status === "approved")
           .reduce((sum, item) => sum + leaveDaysInMonth(item.startDate, item.endDate, period.year, period.month), 0);
