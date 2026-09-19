@@ -1,15 +1,15 @@
-FROM node:22-alpine
+﻿FROM node:22-alpine
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+COPY package*.json ./
+
 RUN npm ci
 
-COPY tsconfig.json ./
-COPY src ./src
+COPY . .
 
-ENV PORT=45218
-ENV START=src/gateway/index.ts
-EXPOSE 45218
+RUN npm run build
 
-CMD ["sh", "-c", "npx tsx $START"]
+ENV NODE_ENV=production
+
+CMD ["sh", "-c", "npx tsx ${START:-src/gateway/index.ts}"]

@@ -1,22 +1,20 @@
-FROM node:22-alpine AS build
+﻿FROM node:22-alpine AS build
 
 WORKDIR /app
-COPY package.json package-lock.json ./
+
+COPY package*.json ./
+
 RUN npm ci
+
 COPY . .
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_PUBLISHABLE_KEY
-ARG VITE_AZURE_CLIENT_ID=61a719fe-4a65-43a0-aeaf-4f21dedfdc41
-ARG VITE_AZURE_TENANT_ID=c8bb705c-2d97-4d0b-b692-37cc14ae4d29
-ARG VITE_AZURE_API_CLIENT_ID=379ae343-3396-403c-b23e-87d7d10a47ca
-ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
-ENV VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
-ENV VITE_AZURE_CLIENT_ID=$VITE_AZURE_CLIENT_ID
-ENV VITE_AZURE_TENANT_ID=$VITE_AZURE_TENANT_ID
-ENV VITE_AZURE_API_CLIENT_ID=$VITE_AZURE_API_CLIENT_ID
+
 RUN npm run build
 
-FROM nginx:1.27-alpine
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+FROM nginx:alpine
+
 COPY --from=build /app/dist /usr/share/nginx/html
+
 EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
