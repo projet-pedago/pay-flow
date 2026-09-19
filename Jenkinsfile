@@ -7,11 +7,12 @@
     }
 
     environment {
-        ACR_NAME       = 'acrpayrollflowyao'
-        ACR_LOGIN      = 'acrpayrollflowyao.azurecr.io'
-        AKS_RG         = 'rg-payrollflow-dev'
-        AKS_NAME       = 'aks-payrollflow-dev'
-        K8S_NAMESPACE  = 'payrollflow'
+        ACR_NAME      = 'acrpayrollflowyao'
+        ACR_LOGIN     = 'acrpayrollflowyao.azurecr.io'
+        AKS_NAME      = 'aks-payrollflow-dev'
+        RESOURCE_GROUP = 'rg-payrollflow-dev'
+        NAMESPACE     = 'payrollflow'
+        KEYVAULT      = 'kv-payrollflow-yao'
 
         BACKEND_IMAGE  = 'payrollflow/backend'
         FRONTEND_IMAGE = 'payrollflow/frontend'
@@ -21,7 +22,7 @@
 
         stage('Checkout') {
             steps {
-                echo '=== Checkout PayRollFlow ==='
+                echo '=== CHECKOUT PAYROLLFLOW ==='
                 checkout scm
             }
         }
@@ -77,14 +78,27 @@
         stage('Azure Login') {
             steps {
                 sh '''
-                    echo "=== Azure Managed Identity ==="
-                    az login --identity
+                    set -e
 
-                    echo "=== Subscription ==="
-                    az account show -o table
+                    echo "=== AZURE LOGIN ==="
 
-                    echo "=== ACR Login ==="
-                    az acr login --name $ACR_NAME
+                    az login --identity >/dev/null
+
+                    echo "Azure Managed Identity OK"
+                '''
+            }
+        }
+
+        stage('ACR Login') {
+            steps {
+                sh '''
+                    set -e
+
+                    echo "=== ACR LOGIN ==="
+
+                    az acr login --name "$ACR_NAME"
+
+                    echo "ACR login OK"
                 '''
             }
         }
@@ -92,27 +106,39 @@
         stage('Docker Build') {
             steps {
                 sh '''
-                    echo "=== Build backend ==="
+                    set -e
+
+                    echo "=== BUILD BACKEND ==="
+
                     docker build \
-                      -t $ACR_LOGIN/$BACKEND_IMAGE:$BUILD_NUMBER \
+                      -t "$ACR_LOGIN/$BACKEND_IMAGE:$BUILD_NUMBER" \
+                      -t "$ACR_LOGIN/$BACKEND_IMAGE:latest" \
                       ./backend
 
-                    echo "=== Build frontend ==="
+                    echo "=== BUILD FRONTEND ==="
+
                     docker build \
-                      -t $ACR_LOGIN/$FRONTEND_IMAGE:$BUILD_NUMBER \
+                      -t "$ACR_LOGIN/$FRONTEND_IMAGE:$BUILD_NUMBER" \
+                      -t "$ACR_LOGIN/$FRONTEND_IMAGE:latest" \
                       ./frontend
                 '''
             }
         }
 
-        stage('Push ACR') {
+        stage('Docker Push') {
             steps {
                 sh '''
-                    echo "=== Push backend ==="
-                    docker push $ACR_LOGIN/$BACKEND_IMAGE:$BUILD_NUMBER
+                    set -e
 
-                    echo "=== Push frontend ==="
-                    docker push $ACR_LOGIN/$FRONTEND_IMAGE:$BUILD_NUMBER
+                    echo "=== PUSH BACKEND ==="
+
+                    docker push "$ACR_LOGIN/$BACKEND_IMAGE:$BUILD_NUMBER"
+                    docker push "$ACR_LOGIN/$BACKEND_IMAGE:latest"
+
+                    echo "=== PUSH FRONTEND ==="
+
+                    docker push "$ACR_LOGIN/$FRONTEND_IMAGE:$BUILD_NUMBER"
+                    docker push "$ACR_LOGIN/$FRONTEND_IMAGE:latest"
                 '''
             }
         }
@@ -120,11 +146,13 @@
         stage('AKS Credentials') {
             steps {
                 sh '''
-                    echo "=== AKS credentials ==="
+                    set -e
+
+                    echo "=== AKS CREDENTIALS ==="
 
                     az aks get-credentials \
-                      --resource-group $AKS_RG \
-                      --name $AKS_NAME \
+                      --resource-group "$RESOURCE_GROUP" \
+                      --name "$AKS_NAME" \
                       --admin \
                       --overwrite-existing
 
@@ -133,10 +161,54 @@
             }
         }
 
+        stage('Key Vault -> AKS') {
+            steps {
+                sh '''
+                    set -e
+
+                    echo "=== KEY VAULT -> KUBERNETES SECRET ==="
+
+                    JWT_SECRET=$(az keyvault secret show \
+                      --vault-name "$KEYVAULT" \
+                      --name JWT-SECRET \
+                      --query value \
+                      -o tsv)
+
+                    GRAPH_CLIENT_ID=$(az keyvault secret show \
+                      --vault-name "$KEYVAULT" \
+                      --name AZURE-GRAPH-CLIENT-ID \
+                      --query value \
+                      -o tsv)
+
+                    GRAPH_CLIENT_SECRET=$(az keyvault secret show \
+                      --vault-name "$KEYVAULT" \
+                      --name AZURE-GRAPH-CLIENT-SECRET \
+                      --query value \
+                      -o tsv)
+
+                    kubectl create secret generic payrollflow-secrets \
+                      --namespace "$NAMESPACE" \
+                      --from-literal=JWT_SECRET="$JWT_SECRET" \
+                      --from-literal=AZURE_GRAPH_CLIENT_ID="$GRAPH_CLIENT_ID" \
+                      --from-literal=AZURE_GRAPH_CLIENT_SECRET="$GRAPH_CLIENT_SECRET" \
+                      --dry-run=client \
+                      -o yaml | kubectl apply -f -
+
+                    unset JWT_SECRET
+                    unset GRAPH_CLIENT_ID
+                    unset GRAPH_CLIENT_SECRET
+
+                    echo "Kubernetes secrets updated"
+                '''
+            }
+        }
+
         stage('Deploy AKS') {
             steps {
                 sh '''
-                    echo "=== Apply Kubernetes manifests ==="
+                    set -e
+
+                    echo "=== APPLY KUBERNETES MANIFESTS ==="
 
                     kubectl apply -f k8s/storageclass.yaml
                     kubectl apply -f k8s/storage.yaml
@@ -144,33 +216,31 @@
                     kubectl apply -f k8s/gateway.yaml
                     kubectl apply -f k8s/frontend.yaml
 
-                    echo "=== Update backend services ==="
+                    echo "=== UPDATE IMAGES ==="
 
                     kubectl set image deployment/auth \
-                      auth=$ACR_LOGIN/$BACKEND_IMAGE:$BUILD_NUMBER \
-                      -n $K8S_NAMESPACE
+                      auth="$ACR_LOGIN/$BACKEND_IMAGE:$BUILD_NUMBER" \
+                      -n "$NAMESPACE"
 
                     kubectl set image deployment/hr \
-                      hr=$ACR_LOGIN/$BACKEND_IMAGE:$BUILD_NUMBER \
-                      -n $K8S_NAMESPACE
+                      hr="$ACR_LOGIN/$BACKEND_IMAGE:$BUILD_NUMBER" \
+                      -n "$NAMESPACE"
 
                     kubectl set image deployment/payroll \
-                      payroll=$ACR_LOGIN/$BACKEND_IMAGE:$BUILD_NUMBER \
-                      -n $K8S_NAMESPACE
+                      payroll="$ACR_LOGIN/$BACKEND_IMAGE:$BUILD_NUMBER" \
+                      -n "$NAMESPACE"
 
                     kubectl set image deployment/time \
-                      time=$ACR_LOGIN/$BACKEND_IMAGE:$BUILD_NUMBER \
-                      -n $K8S_NAMESPACE
+                      time="$ACR_LOGIN/$BACKEND_IMAGE:$BUILD_NUMBER" \
+                      -n "$NAMESPACE"
 
                     kubectl set image deployment/gateway \
-                      gateway=$ACR_LOGIN/$BACKEND_IMAGE:$BUILD_NUMBER \
-                      -n $K8S_NAMESPACE
-
-                    echo "=== Update frontend ==="
+                      gateway="$ACR_LOGIN/$BACKEND_IMAGE:$BUILD_NUMBER" \
+                      -n "$NAMESPACE"
 
                     kubectl set image deployment/frontend \
-                      frontend=$ACR_LOGIN/$FRONTEND_IMAGE:$BUILD_NUMBER \
-                      -n $K8S_NAMESPACE
+                      frontend="$ACR_LOGIN/$FRONTEND_IMAGE:$BUILD_NUMBER" \
+                      -n "$NAMESPACE"
                 '''
             }
         }
@@ -178,51 +248,53 @@
         stage('Verify Deployment') {
             steps {
                 sh '''
-                    echo "=== Waiting for deployments ==="
+                    set -e
+
+                    echo "=== ROLLOUT STATUS ==="
 
                     kubectl rollout status deployment/auth \
-                      -n $K8S_NAMESPACE --timeout=180s
+                      -n "$NAMESPACE" --timeout=180s
 
                     kubectl rollout status deployment/hr \
-                      -n $K8S_NAMESPACE --timeout=180s
+                      -n "$NAMESPACE" --timeout=180s
 
                     kubectl rollout status deployment/payroll \
-                      -n $K8S_NAMESPACE --timeout=180s
+                      -n "$NAMESPACE" --timeout=180s
 
                     kubectl rollout status deployment/time \
-                      -n $K8S_NAMESPACE --timeout=180s
+                      -n "$NAMESPACE" --timeout=180s
 
                     kubectl rollout status deployment/gateway \
-                      -n $K8S_NAMESPACE --timeout=180s
+                      -n "$NAMESPACE" --timeout=180s
 
                     kubectl rollout status deployment/frontend \
-                      -n $K8S_NAMESPACE --timeout=180s
+                      -n "$NAMESPACE" --timeout=180s
 
-                    echo "=== Pods ==="
-                    kubectl get pods -n $K8S_NAMESPACE
+                    echo "=== PODS ==="
 
-                    echo "=== Services ==="
-                    kubectl get svc -n $K8S_NAMESPACE
+                    kubectl get pods -n "$NAMESPACE"
 
-                    echo "=== Ingress ==="
-                    kubectl get ingress -n $K8S_NAMESPACE
+                    echo "=== SERVICES ==="
+
+                    kubectl get svc -n "$NAMESPACE"
                 '''
             }
         }
     }
 
     post {
+
         success {
             echo '========================================'
-            echo ' PayRollFlow : CI/CD réussi'
-            echo " Version déployée : ${BUILD_NUMBER}"
+            echo ' PayRollFlow CI/CD : SUCCESS'
+            echo ' Build + ACR + AKS terminés'
             echo '========================================'
         }
 
         failure {
             echo '========================================'
-            echo ' PayRollFlow : pipeline échoué'
-            echo " Build : ${BUILD_NUMBER}"
+            echo ' PayRollFlow CI/CD : FAILED'
+            echo ' Consulte les logs Jenkins'
             echo '========================================'
         }
 
