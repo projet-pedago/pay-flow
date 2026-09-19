@@ -83,9 +83,9 @@ export function AdminLayout({ children, variant = "admin" }: { children: ReactNo
         <NavItems links={links} home={home} />
         <div className="mt-auto space-y-3">
           <div className="flex items-center justify-between rounded-2xl bg-white/8 p-4 text-xs text-white/70">
-            <div>
-              <p className="font-semibold text-white">{user?.name}</p>
-              <p className="mt-1">{user?.email}</p>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-semibold text-white">{user?.name}</p>
+              <p className="mt-1 truncate" title={user?.email}>{user?.email}</p>
             </div>
             <NotificationBell />
           </div>
