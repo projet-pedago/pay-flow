@@ -7,12 +7,12 @@ pipeline {
     }
 
     environment {
-        ACR_NAME      = 'acrpayrollflowyao'
-        ACR_LOGIN     = 'acrpayrollflowyao.azurecr.io'
-        AKS_NAME      = 'aks-payrollflow-dev'
+        ACR_NAME       = 'acrpayrollflowyao'
+        ACR_LOGIN      = 'acrpayrollflowyao.azurecr.io'
+        AKS_NAME       = 'aks-payrollflow-dev'
         RESOURCE_GROUP = 'rg-payrollflow-dev'
-        NAMESPACE     = 'payrollflow'
-        KEYVAULT      = 'kv-payrollflow-yao'
+        NAMESPACE      = 'payrollflow'
+        KEYVAULT       = 'kv-payrollflow-yao'
 
         BACKEND_IMAGE  = 'payrollflow/backend'
         FRONTEND_IMAGE = 'payrollflow/frontend'
@@ -164,6 +164,14 @@ pipeline {
             }
         }
 
+        /*
+         * TEMPORAIRE :
+         * On conserve ce stage pendant le premier déploiement
+         * de validation du CSI Key Vault.
+         *
+         * Une fois le CSI validé via Jenkins, ce stage pourra
+         * être supprimé.
+         */
         stage('Key Vault -> AKS') {
             steps {
                 sh '''
@@ -213,10 +221,25 @@ pipeline {
 
                     echo "=== APPLY KUBERNETES MANIFESTS ==="
 
+                    echo "=== STORAGE ==="
+
                     kubectl apply -f k8s/storageclass.yaml
                     kubectl apply -f k8s/storage.yaml
+
+                    echo "=== AZURE KEY VAULT CSI ==="
+
+                    kubectl apply -f k8s/secret-provider-class.yaml
+
+                    echo "=== BACKEND SERVICES ==="
+
                     kubectl apply -f k8s/backend-services.yaml
+
+                    echo "=== GATEWAY ==="
+
                     kubectl apply -f k8s/gateway.yaml
+
+                    echo "=== FRONTEND ==="
+
                     kubectl apply -f k8s/frontend.yaml
 
                     echo "=== UPDATE IMAGES ==="
@@ -280,6 +303,25 @@ pipeline {
                     echo "=== SERVICES ==="
 
                     kubectl get svc -n "$NAMESPACE"
+
+                    echo "=== KEY VAULT CSI STATUS ==="
+
+                    kubectl get secretproviderclass \
+                      -n "$NAMESPACE"
+
+                    kubectl get secretproviderclasspodstatus \
+                      -n "$NAMESPACE"
+
+                    echo "=== KUBERNETES SECRET KEYS ==="
+
+                    kubectl get secret payrollflow-secrets \
+                      -n "$NAMESPACE" \
+                      -o jsonpath='{.data}' \
+                      | grep -oE 'AZURE_GRAPH_CLIENT_ID|AZURE_GRAPH_CLIENT_SECRET|JWT_SECRET' \
+                      | sort
+
+                    echo
+                    echo "=== DEPLOYMENT VERIFICATION COMPLETE ==="
                 '''
             }
         }
@@ -290,7 +332,8 @@ pipeline {
         success {
             echo '========================================'
             echo ' PayRollFlow CI/CD : SUCCESS'
-            echo ' Build + ACR + AKS terminÃƒÆ’Ã‚Â©s'
+            echo ' Build + ACR + AKS terminés'
+            echo ' Azure Key Vault CSI vérifié'
             echo '========================================'
         }
 

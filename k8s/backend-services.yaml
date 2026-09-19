@@ -22,28 +22,50 @@ spec:
           env:
             - name: PORT
               value: "45231"
+
             - name: START
               value: "src/services/auth/index.ts"
+
             - name: DATA_DIR
               value: "/app/data"
+
             - name: AZURE_CLIENT_ID
               value: "61a719fe-4a65-43a0-aeaf-4f21dedfdc41"
+
             - name: AZURE_TENANT_ID
               value: "c8bb705c-2d97-4d0b-b692-37cc14ae4d29"
+
             - name: AZURE_API_CLIENT_ID
               value: "379ae343-3396-403c-b23e-87d7d10a47ca"
+
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: payrollflow-secrets
                   key: JWT_SECRET
+
           volumeMounts:
             - name: payroll-data
               mountPath: /app/data
+
+            # Azure Key Vault via Secrets Store CSI
+            - name: secrets-store
+              mountPath: /mnt/secrets-store
+              readOnly: true
+
       volumes:
         - name: payroll-data
           persistentVolumeClaim:
             claimName: payroll-data
+
+        # Déclenche le montage des secrets depuis Azure Key Vault
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: payrollflow-keyvault
+
 ---
 apiVersion: v1
 kind: Service
@@ -56,6 +78,7 @@ spec:
   ports:
     - port: 45231
       targetPort: 45231
+
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -81,44 +104,58 @@ spec:
           env:
             - name: PORT
               value: "45232"
+
             - name: START
               value: "src/services/hr/index.ts"
+
             - name: DATA_DIR
               value: "/app/data"
+
             - name: AZURE_CLIENT_ID
               value: "61a719fe-4a65-43a0-aeaf-4f21dedfdc41"
+
             - name: AZURE_TENANT_ID
               value: "c8bb705c-2d97-4d0b-b692-37cc14ae4d29"
+
             - name: AZURE_API_CLIENT_ID
               value: "379ae343-3396-403c-b23e-87d7d10a47ca"
+
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: payrollflow-secrets
                   key: JWT_SECRET
+
             - name: AZURE_GRAPH_CLIENT_ID
               valueFrom:
                 secretKeyRef:
                   name: payrollflow-secrets
                   key: AZURE_GRAPH_CLIENT_ID
+
             - name: AZURE_GRAPH_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: payrollflow-secrets
                   key: AZURE_GRAPH_CLIENT_SECRET
+
             - name: AZURE_PAYFLOW_ROLE_ADMIN_ID
               value: "68b0c89b-e615-470a-8a92-50f57b07a4be"
+
             - name: AZURE_PAYFLOW_ROLE_HR_ID
               value: "13f289a4-a8c1-41ad-afe5-64040b587b26"
+
             - name: AZURE_PAYFLOW_ROLE_EMPLOYEE_ID
               value: "394165ce-9655-44b9-aca2-12b406dcc69a"
+
           volumeMounts:
             - name: payroll-data
               mountPath: /app/data
+
       volumes:
         - name: payroll-data
           persistentVolumeClaim:
             claimName: payroll-data
+
 ---
 apiVersion: v1
 kind: Service
@@ -131,6 +168,7 @@ spec:
   ports:
     - port: 45232
       targetPort: 45232
+
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -156,22 +194,28 @@ spec:
           env:
             - name: PORT
               value: "45233"
+
             - name: START
               value: "src/services/payroll/index.ts"
+
             - name: DATA_DIR
               value: "/app/data"
+
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: payrollflow-secrets
                   key: JWT_SECRET
+
           volumeMounts:
             - name: payroll-data
               mountPath: /app/data
+
       volumes:
         - name: payroll-data
           persistentVolumeClaim:
             claimName: payroll-data
+
 ---
 apiVersion: v1
 kind: Service
@@ -184,6 +228,7 @@ spec:
   ports:
     - port: 45233
       targetPort: 45233
+
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -209,22 +254,28 @@ spec:
           env:
             - name: PORT
               value: "45234"
+
             - name: START
               value: "src/services/time/index.ts"
+
             - name: DATA_DIR
               value: "/app/data"
+
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: payrollflow-secrets
                   key: JWT_SECRET
+
           volumeMounts:
             - name: payroll-data
               mountPath: /app/data
+
       volumes:
         - name: payroll-data
           persistentVolumeClaim:
             claimName: payroll-data
+
 ---
 apiVersion: v1
 kind: Service
