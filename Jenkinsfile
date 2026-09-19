@@ -12,7 +12,6 @@ pipeline {
         AKS_NAME       = 'aks-payrollflow-dev'
         RESOURCE_GROUP = 'rg-payrollflow-dev'
         NAMESPACE      = 'payrollflow'
-        KEYVAULT       = 'kv-payrollflow-yao'
 
         BACKEND_IMAGE  = 'payrollflow/backend'
         FRONTEND_IMAGE = 'payrollflow/frontend'
@@ -160,56 +159,6 @@ pipeline {
                       --overwrite-existing
 
                     kubectl get nodes
-                '''
-            }
-        }
-
-        /*
-         * TEMPORAIRE :
-         * On conserve ce stage pendant le premier déploiement
-         * de validation du CSI Key Vault.
-         *
-         * Une fois le CSI validé via Jenkins, ce stage pourra
-         * être supprimé.
-         */
-        stage('Key Vault -> AKS') {
-            steps {
-                sh '''
-                    set -e
-
-                    echo "=== KEY VAULT -> KUBERNETES SECRET ==="
-
-                    JWT_SECRET=$(az keyvault secret show \
-                      --vault-name "$KEYVAULT" \
-                      --name JWT-SECRET \
-                      --query value \
-                      -o tsv)
-
-                    GRAPH_CLIENT_ID=$(az keyvault secret show \
-                      --vault-name "$KEYVAULT" \
-                      --name AZURE-GRAPH-CLIENT-ID \
-                      --query value \
-                      -o tsv)
-
-                    GRAPH_CLIENT_SECRET=$(az keyvault secret show \
-                      --vault-name "$KEYVAULT" \
-                      --name AZURE-GRAPH-CLIENT-SECRET \
-                      --query value \
-                      -o tsv)
-
-                    kubectl create secret generic payrollflow-secrets \
-                      --namespace "$NAMESPACE" \
-                      --from-literal=JWT_SECRET="$JWT_SECRET" \
-                      --from-literal=AZURE_GRAPH_CLIENT_ID="$GRAPH_CLIENT_ID" \
-                      --from-literal=AZURE_GRAPH_CLIENT_SECRET="$GRAPH_CLIENT_SECRET" \
-                      --dry-run=client \
-                      -o yaml | kubectl apply -f -
-
-                    unset JWT_SECRET
-                    unset GRAPH_CLIENT_ID
-                    unset GRAPH_CLIENT_SECRET
-
-                    echo "Kubernetes secrets updated"
                 '''
             }
         }
