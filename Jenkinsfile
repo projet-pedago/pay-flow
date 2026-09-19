@@ -287,7 +287,7 @@ pipeline {
         success {
             echo '========================================'
             echo ' PayRollFlow CI/CD : SUCCESS'
-            echo ' Build + ACR + AKS terminés'
+            echo ' Build + ACR + AKS terminÃ©s'
             echo '========================================'
         }
 
