@@ -1,4 +1,4 @@
-﻿apiVersion: apps/v1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: gateway
@@ -24,6 +24,12 @@ spec:
               value: "45218"
             - name: START
               value: "src/gateway/index.ts"
+
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: payrollflow-secrets
+                  key: JWT_SECRET
 
             - name: AUTH_URL
               value: "http://auth:45231"
