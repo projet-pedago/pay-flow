@@ -120,6 +120,7 @@ pipeline {
                     docker build \
                       --build-arg VITE_AZURE_CLIENT_ID="61a719fe-4a65-43a0-aeaf-4f21dedfdc41" \
                       --build-arg VITE_AZURE_TENANT_ID="c8bb705c-2d97-4d0b-b692-37cc14ae4d29" \
+                      --build-arg VITE_AZURE_API_CLIENT_ID="379ae343-3396-403c-b23e-87d7d10a47ca" \
                       -t "$ACR_LOGIN/$FRONTEND_IMAGE:$BUILD_NUMBER" \
                       -t "$ACR_LOGIN/$FRONTEND_IMAGE:latest" \
                       ./frontend
@@ -289,7 +290,7 @@ pipeline {
         success {
             echo '========================================'
             echo ' PayRollFlow CI/CD : SUCCESS'
-            echo ' Build + ACR + AKS terminÃƒÂ©s'
+            echo ' Build + ACR + AKS terminÃƒÆ’Ã‚Â©s'
             echo '========================================'
         }
 
