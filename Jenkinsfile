@@ -127,6 +127,88 @@ pipeline {
             }
         }
 
+        // ============================================================
+        // DEVSECOPS - TRIVY SECURITY SCAN
+        // ============================================================
+
+        stage('Security - Trivy Scan') {
+            steps {
+                sh '''
+                    set -e
+
+                    echo "========================================"
+                    echo " TRIVY SECURITY SCAN"
+                    echo "========================================"
+
+                    mkdir -p security-reports
+
+                    echo "=== BACKEND SCAN ==="
+
+                    trivy image \
+                      --scanners vuln \
+                      --severity HIGH,CRITICAL \
+                      --ignore-unfixed \
+                      --no-progress \
+                      --format table \
+                      --output security-reports/trivy-backend.txt \
+                      "$ACR_LOGIN/$BACKEND_IMAGE:$BUILD_NUMBER"
+
+                    cat security-reports/trivy-backend.txt
+
+                    echo
+                    echo "=== FRONTEND SCAN ==="
+
+                    trivy image \
+                      --scanners vuln \
+                      --severity HIGH,CRITICAL \
+                      --ignore-unfixed \
+                      --no-progress \
+                      --format table \
+                      --output security-reports/trivy-frontend.txt \
+                      "$ACR_LOGIN/$FRONTEND_IMAGE:$BUILD_NUMBER"
+
+                    cat security-reports/trivy-frontend.txt
+
+                    echo
+                    echo "========================================"
+                    echo " TRIVY SECURITY GATE"
+                    echo "========================================"
+
+                    echo "=== CHECK BACKEND CRITICAL ==="
+
+                    trivy image \
+                      --scanners vuln \
+                      --severity CRITICAL \
+                      --ignore-unfixed \
+                      --no-progress \
+                      --exit-code 1 \
+                      "$ACR_LOGIN/$BACKEND_IMAGE:$BUILD_NUMBER"
+
+                    echo "=== CHECK FRONTEND CRITICAL ==="
+
+                    trivy image \
+                      --scanners vuln \
+                      --severity CRITICAL \
+                      --ignore-unfixed \
+                      --no-progress \
+                      --exit-code 1 \
+                      "$ACR_LOGIN/$FRONTEND_IMAGE:$BUILD_NUMBER"
+
+                    echo
+                    echo "Trivy Security Gate : PASSED"
+                '''
+            }
+
+            post {
+                always {
+                    archiveArtifacts(
+                        artifacts: 'security-reports/trivy-*.txt',
+                        allowEmptyArchive: true
+                    )
+                }
+            }
+        }
+
         stage('Docker Push') {
             steps {
                 sh '''
@@ -281,7 +363,7 @@ pipeline {
         success {
             echo '========================================'
             echo ' PayRollFlow CI/CD : SUCCESS'
-            echo ' Build + ACR + AKS terminés'
+            echo ' Build + Trivy + ACR + AKS terminés'
             echo ' Azure Key Vault CSI vérifié'
             echo '========================================'
         }
@@ -289,6 +371,7 @@ pipeline {
         failure {
             echo '========================================'
             echo ' PayRollFlow CI/CD : FAILED'
+            echo ' Vérifier les tests / Trivy / déploiement'
             echo ' Consulte les logs Jenkins'
             echo '========================================'
         }

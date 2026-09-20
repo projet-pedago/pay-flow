@@ -2,6 +2,11 @@
 
 WORKDIR /app
 
+# Mise à jour de npm afin de récupérer les dépendances de sécurité corrigées
+RUN npm install -g npm@latest
+
+WORKDIR /app
+
 COPY package*.json ./
 
 RUN npm ci
