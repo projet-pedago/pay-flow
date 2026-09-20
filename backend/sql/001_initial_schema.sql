@@ -218,3 +218,13 @@ ON salary_advances(employee_id);
 
 CREATE INDEX IF NOT EXISTS idx_documents_employee
 ON hr_documents(employee_id);
+-- Initial departments
+INSERT INTO departments (id, name, code, budget, color) VALUES
+('dep-001', 'Direction générale', 'DG', 180000, '#0f766e'),
+('dep-002', 'Ressources humaines', 'RH', 96000, '#1d4ed8'),
+('dep-003', 'Ingénierie', 'ING', 420000, '#7c3aed'),
+('dep-004', 'Opérations', 'OPS', 210000, '#c2410c'),
+('dep-005', 'Finance', 'FIN', 150000, '#0f172a'),
+('dep-006', 'CDP TRANSFERT', 'CDP', 72000, '#475569')
+ON CONFLICT (id) DO NOTHING;
+
